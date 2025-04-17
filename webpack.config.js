@@ -6,7 +6,7 @@ module.exports = {
     'action-two': './src/action-two/index.ts',
   },
   output: {
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'src'),
     filename: '[name]/index.js',
   },
   resolve: {
