@@ -1,9 +1,0 @@
-name: "Action Two"
-description: "Logs the task being executed based on the task input."
-inputs:
-  task:
-    description: "The task to execute."
-    required: true
-runs:
-  using: "node16"
-  main: "index.js"
