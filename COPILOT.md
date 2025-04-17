@@ -34,6 +34,20 @@ This repository contains multiple GitHub Actions built using Node.js, TypeScript
 
 1. Use the `act` CLI or create a test workflow in `.github/workflows/` to test the actions locally or on GitHub.
 
+## Using the Actions in Other Repositories
+
+To use these actions in other repositories, reference them as follows:
+
+```yaml
+- uses: kghafari/my-actions/action-one@v1
+  with:
+    name: "Your Name"
+
+- uses: kghafari/my-actions/action-two@v1
+  with:
+    task: "Your Task"
+```
+
 ## Best Practices
 
 - Keep the logic modular by splitting reusable code into utility files.
