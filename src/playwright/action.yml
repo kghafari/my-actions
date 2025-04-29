@@ -4,27 +4,21 @@ inputs:
   workflow-run:
     description: "The workflow run object. i.e. github.event.workflow_run."
     required: false
-runs:
-  using: "ubuntu-latest"
-  steps:
-    - name: Output workflow-run details if provided
-      if: inputs.workflow-run
-      run: |
-        echo "Triggered from: [${{ inputs.workflow-run.name }} - #${{ inputs.workflow-run.run_number }}](${{ inputs.workflow-run.html_url }})" >> $GITHUB_STEP_SUMMARY
 
-    - name: Print a welcome message
-      run: echo "Welcome to the Playwright Action!"
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Output workflow-run details if provided
+        if: inputs.workflow-run
+        run: |
+          echo "Triggered from: [${{ inputs.workflow-run.name }} - #${{ inputs.workflow-run.run_number }}](${{ inputs.workflow-run.html_url }})" >> $GITHUB_STEP_SUMMARY
 
-    - name: Print the current date
-      run: echo "Today's date is $(date)"
+      - name: Print a welcome message
+        run: echo "Welcome to the Playwright Action!"
 
-    - name: Print a goodbye message
-      run: echo "Goodbye from the Playwright Action!"
+      - name: Print the current date
+        run: echo "Today's date is $(date)"
 
-    - name: Show results
-      run: |
-        echo "##[group]Results"
-        echo "Welcome to the Playwright Action!"
-        echo "Today's date is $(date)"
-        echo "Goodbye from the Playwright Action!"
-        echo "##[endgroup]"
+      - name: Print a goodbye message
+        run: echo "Goodbye from the Playwright Action!"
