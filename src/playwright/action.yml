@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Output workflow-run details if provided
-        if: inputs.workflow-run
+        if: ${{ inputs.workflow-run }}
         run: |
           echo "Triggered from: [${{ inputs.workflow-run.name }} - #${{ inputs.workflow-run.run_number }}](${{ inputs.workflow-run.html_url }})" >> $GITHUB_STEP_SUMMARY
 
