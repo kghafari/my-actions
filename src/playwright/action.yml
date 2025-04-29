@@ -1,9 +1,12 @@
 name: "Playwright Action"
 description: "An example action that outputs messages to the console."
-inputs:
-  workflow-run:
-    description: "The workflow run object. i.e. github.event.workflow_run."
-    required: false
+
+on:
+  workflow_call:
+    inputs:
+      workflow-run:
+        description: "The workflow run object. i.e. github.event.workflow_run."
+        required: false
 
 jobs:
   run:
