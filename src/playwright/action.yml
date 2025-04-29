@@ -5,7 +5,7 @@ inputs:
     description: "The workflow run object. i.e. github.event.workflow_run."
     required: false
 runs:
-  using: "ubuntu-latest"
+  using: "composite"
   steps:
     - name: Output workflow-run details if provided
       if: inputs.workflow-run
