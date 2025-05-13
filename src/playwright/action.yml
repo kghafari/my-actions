@@ -1,23 +1,16 @@
 name: "Playwright Action"
+description: "Run Playwright tests"
 
 inputs:
   base_url:
     description: "Base URL for the action"
     required: true
-    type: string
-  env:
+  run_environment:
     description: "Environment for the action"
     required: true
-    type: string
   workflow_run_url:
     description: "Workflow run for the action"
     required: false
-    type: string
-
-env:
-  BASE_URL: ${{ inputs.base_url }}
-  ENVIRONMENT: ${{ inputs.environment }}
-  WORKFLOW_RUN_URL: ${{ inputs.workflow_run_url }}
 
 runs:
   using: "composite"
