@@ -19,6 +19,7 @@ export function executeTask(task: string) {
 }
 
 export async function checkDeployments(environments: string) {
+  logInputs();
   // split the environments string into an array
   const envArray = environments.split(",");
 
@@ -59,7 +60,7 @@ async function getLastSuccessfulDeploymentSha(
       })
     ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
     core.info(
-      `> Found ${deployments.length} deployments for ${env} environment`
+      `  > Found ${deployments.length} deployments for ${env} environment`
     );
     for (const deployment of deployments) {
       const { data: statuses } =
@@ -71,8 +72,9 @@ async function getLastSuccessfulDeploymentSha(
         });
 
       core.info(
-        `> Found ${statuses.length} statuses for deployment ${deployment.id}`
+        `  > Found ${statuses.length} statuses for deployment ${deployment.id}`
       );
+      core.info(JSON.stringify(statuses));
       const wasSuccessful = statuses.find((s) => s.state === "success");
 
       if (wasSuccessful) {
@@ -87,6 +89,17 @@ async function getLastSuccessfulDeploymentSha(
     core.warning(`No successful ${env} deployments found 😵💫`);
     core.setFailed(String(err));
   }
+}
+
+function logInputs() {
+  core.info("Logging inputs...");
+  core.info(`GITHUB_REPO: ${GITHUB_REPO}`);
+  core.info(`OWNER: ${OWNER}`);
+  core.info(`REPO: ${REPO}`);
+  core.info(`GITHUB_REPOSITORY: ${process.env.GITHUB_REPOSITORY}`);
+  core.info(`GITHUB_REF: ${process.env.GITHUB_REF}`);
+  core.info(`GITHUB_SHA: ${process.env.GITHUB_SHA}`);
+  core.info(`GITHUB_EVENT_NAME: ${process.env.GITHUB_EVENT_NAME}`);
 }
 
 function configureOctokit(): Octokit & Api {
