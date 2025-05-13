@@ -1,5 +1,4 @@
 name: "Playwright Action"
-description: "An example action that outputs messages to the console."
 
 on:
   workflow_call:
@@ -23,7 +22,7 @@ env:
   WORKFLOW_RUN_URL: ${{ inputs.workflow_run_url }}
 
 jobs:
-  run:
+  playwright:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
