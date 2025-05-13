@@ -38,6 +38,7 @@ export async function checkDeployments(environments: string) {
         );
     } else {
       core.warning(`No successful deployment found for ${env}`);
+      core.summary.addHeading(`Sad face :(`);
     }
   });
 }
@@ -57,7 +58,9 @@ async function getLastSuccessfulDeploymentSha(
         per_page: limit,
       })
     ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
-
+    core.info(
+      `> Found ${deployments.length} deployments for ${env} environment`
+    );
     for (const deployment of deployments) {
       const { data: statuses } =
         await octokit.rest.repos.listDeploymentStatuses({
@@ -67,6 +70,9 @@ async function getLastSuccessfulDeploymentSha(
           per_page: 5, // Most deployments don't have tons of statuses
         });
 
+      core.info(
+        `> Found ${statuses.length} statuses for deployment ${deployment.id}`
+      );
       const wasSuccessful = statuses.find((s) => s.state === "success");
 
       if (wasSuccessful) {
