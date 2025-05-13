@@ -4,24 +4,37 @@ description: "An example action that outputs messages to the console."
 on:
   workflow_call:
     inputs:
-      workflow_run:
-        description: "The workflow run object (e.g., github.event.workflow_run)."
+      base_url:
+        description: "Base URL for the action"
+        required: true
+        type: string
+      environment:
+        description: "Environment for the action"
+        required: true
+        type: string
+      workflow_run_url:
+        description: "Workflow run for the action"
         required: false
+        type: string
+    # secrets:
+    #   e2e_user:
+    #     description: "E2E user secret"
+    #     required: true
+    #   e2e_password:
+    #     description: "E2E password secret"
+    #     required: true
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Set Workflow Run Environment Variable
-        env:
-          WORKFLOW_RUN: ${{ toJson(inputs.workflow_run) }}
-        run: |
-          echo "Workflow Run: $WORKFLOW_RUN"
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - name: Print Workflow-Run Details (if provided)
-        if: ${{ inputs.workflow_run }}
+      - name: print inputs
         run: |
-          echo "Triggered from: [${{ fromJson(inputs.workflow_run).name }} - #${{ fromJson(inputs.workflow_run).run_number }}](${{ fromJson(inputs.workflow_run).html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "Base URL: ${{ inputs.base_url }}"
+          echo "Environment: ${{ inputs.environment }}"
 
       - name: Print a welcome message
         run: echo "Welcome to the Playwright Action!"
@@ -31,3 +44,11 @@ jobs:
 
       - name: Print a goodbye message
         run: echo "Goodbye from the Playwright Action!"
+
+      - name: Create Summary
+        id: create_summary
+        run: |
+          echo "## Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Base URL: ${{ inputs.base_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "Workflow run URL: ${{ inputs.workflow_run_url }}" >> $GITHUB_STEP_SUMMARY
