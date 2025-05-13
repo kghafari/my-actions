@@ -1,0 +1,22 @@
+# .github/workflows/action-one.yml
+name: "Reusable Workflow for Action One"
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: "The name to greet."
+        required: true
+        type: string
+
+jobs:
+  action-one-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Action One
+        uses: ../../src/action-one/action.yml
+        with:
+          name: ${{ inputs.name }}

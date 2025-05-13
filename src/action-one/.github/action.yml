@@ -1,9 +1,0 @@
-name: "Action One"
-description: "Logs a greeting based on the name input."
-inputs:
-  name:
-    description: "The name to greet."
-    required: true
-runs:
-  using: "node16"
-  main: "./index.js"
