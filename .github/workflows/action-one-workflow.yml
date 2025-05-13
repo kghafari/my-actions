@@ -8,15 +8,16 @@ on:
         description: "The name to greet."
         required: true
         type: string
+        default: "World"
 
 jobs:
   action-one-job:
-    runs-on: ubuntu-latest
+    runs-on: composite
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Run Action One
-        uses: kghafari/my-actions/src/action-one/action.yml
+        uses: ./src/action-one
         with:
           name: ${{ inputs.name }}
