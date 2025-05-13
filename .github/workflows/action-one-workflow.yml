@@ -23,10 +23,10 @@ jobs:
       - name: Run Action One
         uses: ./src/action-one
         with:
-          name: ${{ inputs.name }}
+          name: ${{ github.event.inputs.name }}
   check-inputs:
     runs-on: ubuntu-latest
     steps:
       - name: Check inputs
         run: |
-          echo "Input name is: ${{ inputs.name }}"
+          echo "Input name is: ${{ github.event.inputs.name }}"
