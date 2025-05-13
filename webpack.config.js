@@ -4,6 +4,7 @@ module.exports = {
   entry: {
     'action-one': './src/action-one/index.ts',
     'action-two': './src/action-two/index.ts',
+    'env-check': './src/env-check/index.ts',
   },
   output: {
     path: path.resolve(__dirname, 'src'),

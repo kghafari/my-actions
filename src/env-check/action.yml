@@ -1,0 +1,16 @@
+name: "Deployment Check"
+description: "Checks the current deployment environments and their status.
+  Compares github deployments against main branch
+  to determine which code is in which environment."
+inputs:
+  github_repo:
+    description: "GitHub repository to check"
+    required: true
+    default: ${{ github.event.repository.full_name }}
+  environments_to_check:
+    description: "Environments to check"
+    required: true
+    default: "dev,prod"
+runs:
+  using: "node16"
+  main: "./index.js"

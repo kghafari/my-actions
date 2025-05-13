@@ -17,5 +17,12 @@
     "typescript": "^5.8.3",
     "webpack": "^5.99.5",
     "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@octokit/auth-action": "^5.1.2",
+    "@octokit/plugin-rest-endpoint-methods": "^14.0.0",
+    "@octokit/plugin-throttling": "^10.0.0",
+    "@octokit/webhooks-types": "^7.6.1",
+    "octokit": "^4.1.3"
   }
 }
