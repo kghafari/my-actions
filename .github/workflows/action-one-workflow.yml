@@ -2,6 +2,9 @@
 name: "Reusable Workflow for Action One"
 
 on:
+  push:
+    branches:
+      - main
   workflow_call:
     inputs:
       name:
