@@ -8,7 +8,7 @@ on:
         description: "The workflow run object. i.e. github.event.workflow_run."
         required: false
 env:
-  WORKFLOW_RUN: ${{ toJson(inputs.workflow_run) }}
+  WORKFLOW_RUN: ${{ inputs.workflow_run }}
 
 jobs:
   run:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: print workflow-run details raw
         run: |
-          echo "$WORKFLOW_RUN"
+          echo "toJson($WORKFLOW_RUN)"
       # - name: Output workflow-run details if provided
       #   if: ${{ inputs.workflow-run }}
       #   run: |
