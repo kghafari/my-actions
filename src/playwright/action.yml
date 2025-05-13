@@ -7,20 +7,21 @@ on:
       workflow-run:
         description: "The workflow run object. i.e. github.event.workflow_run."
         required: false
-env:
-  WORKFLOW_RUN: ${{ inputs.workflow-run }}
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: print workflow-run details raw
+      - name: Set Workflow Run Environment Variable
+        env:
+          WORKFLOW_RUN: ${{ inputs.workflow-run }}
         run: |
-          echo "toJson($WORKFLOW_RUN)"
-      # - name: Output workflow-run details if provided
-      #   if: ${{ inputs.workflow-run }}
-      #   run: |
-      #     echo "Triggered from: [${{ inputs.workflow-run.name }} - #${{ inputs.workflow-run.run_number }}](${{ inputs.workflow-run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "Workflow Run: $WORKFLOW_RUN"
+
+      - name: Print Workflow-Run Details (if provided)
+        if: ${{ inputs.workflow-run }}
+        run: |
+          echo "Triggered from: [${{ inputs.workflow-run.name }} - #${{ inputs.workflow-run.run_number }}](${{ inputs.workflow-run.html_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: Print a welcome message
         run: echo "Welcome to the Playwright Action!"
