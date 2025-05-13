@@ -16,13 +16,11 @@ on:
         description: "Workflow run for the action"
         required: false
         type: string
-    # secrets:
-    #   e2e_user:
-    #     description: "E2E user secret"
-    #     required: true
-    #   e2e_password:
-    #     description: "E2E password secret"
-    #     required: true
+
+env:
+  BASE_URL: ${{ inputs.base_url }}
+  ENVIRONMENT: ${{ inputs.environment }}
+  WORKFLOW_RUN_URL: ${{ inputs.workflow_run_url }}
 
 jobs:
   run:
@@ -33,22 +31,13 @@ jobs:
 
       - name: print inputs
         run: |
-          echo "Base URL: ${{ inputs.base_url }}"
-          echo "Environment: ${{ inputs.environment }}"
-
-      - name: Print a welcome message
-        run: echo "Welcome to the Playwright Action!"
-
-      - name: Print the current date
-        run: echo "Today's date is $(date)"
-
-      - name: Print a goodbye message
-        run: echo "Goodbye from the Playwright Action!"
+          echo "Base URL: $BASE_URL"
+          echo "Environment: $ENVIRONMENT"
 
       - name: Create Summary
         id: create_summary
         run: |
           echo "## Summary" >> $GITHUB_STEP_SUMMARY
-          echo "Base URL: ${{ inputs.base_url }}" >> $GITHUB_STEP_SUMMARY
-          echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "Workflow run URL: ${{ inputs.workflow_run_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "Base URL: $$BASE_URL" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          echo "Workflow run URL: $WORKFLOW_RUN_URL" >> $GITHUB_STEP_SUMMARY
