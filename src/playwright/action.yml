@@ -8,7 +8,7 @@ on:
         description: "The workflow run object. i.e. github.event.workflow_run."
         required: false
 env:
-  WORKFLOW_RUN: ${{ inputs.workflow_run }}
+  WORKFLOW_RUN: ${{ inputs.workflow-run }}
 
 jobs:
   run:
