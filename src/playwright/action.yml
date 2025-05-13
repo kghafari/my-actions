@@ -13,15 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set Workflow Run Environment Variable
-        env:
-          WORKFLOW_RUN: ${{ inputs.workflow-run }}
         run: |
-          echo "Workflow Run: $WORKFLOW_RUN"
+          echo "WORKFLOW_RUN=${{ inputs.workflow-run }}" >> $GITHUB_ENV
 
       - name: Print Workflow-Run Details (if provided)
-        if: ${{ inputs.workflow-run }}
+        if: ${{ env.WORKFLOW_RUN }}
         run: |
-          echo "Triggered from: [${{ inputs.workflow-run.name }} - #${{ inputs.workflow-run.run_number }}](${{ inputs.workflow-run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered from: [${{ fromJson(env.WORKFLOW_RUN).name }} - #${{ fromJson(env.WORKFLOW_RUN).run_number }}](${{ fromJson(env.WORKFLOW_RUN).html_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: Print a welcome message
         run: echo "Welcome to the Playwright Action!"
