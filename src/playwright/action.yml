@@ -4,8 +4,8 @@ description: "An example action that outputs messages to the console."
 on:
   workflow_call:
     inputs:
-      workflow-run:
-        description: "The workflow run object. i.e. github.event.workflow_run."
+      workflow_run:
+        description: "The workflow run object (e.g., github.event.workflow_run)."
         required: false
 
 jobs:
@@ -13,13 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set Workflow Run Environment Variable
+        env:
+          WORKFLOW_RUN: ${{ toJson(inputs.workflow_run) }}
         run: |
-          echo "WORKFLOW_RUN=${{ inputs.workflow-run }}" >> $GITHUB_ENV
+          echo "Workflow Run: $WORKFLOW_RUN"
 
       - name: Print Workflow-Run Details (if provided)
-        if: ${{ env.WORKFLOW_RUN }}
+        if: ${{ inputs.workflow_run }}
         run: |
-          echo "Triggered from: [${{ fromJson(env.WORKFLOW_RUN).name }} - #${{ fromJson(env.WORKFLOW_RUN).run_number }}](${{ fromJson(env.WORKFLOW_RUN).html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered from: [${{ fromJson(inputs.workflow_run).name }} - #${{ fromJson(inputs.workflow_run).run_number }}](${{ fromJson(inputs.workflow_run).html_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: Print a welcome message
         run: echo "Welcome to the Playwright Action!"
