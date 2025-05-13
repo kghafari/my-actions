@@ -17,13 +17,12 @@ runs:
   steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-      shell: bash
 
     - name: print inputs
       shell: bash
       run: |
         echo "Base URL: ${{ inputs.base_url }}"
-        echo "Environment: ${{ inputs.environment }}"
+        echo "Environment: ${{ inputs.run_environment }}"
 
     - name: Create Summary
       id: create_summary
@@ -31,5 +30,5 @@ runs:
       run: |
         echo "## Summary" >> $GITHUB_STEP_SUMMARY
         echo "Base URL: ${{ inputs.base_url }}" >> $GITHUB_STEP_SUMMARY
-        echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "Environment: ${{ inputs.run_environment }}" >> $GITHUB_STEP_SUMMARY
         echo "Workflow run URL: ${{ inputs.workflow_run_url }}" >> $GITHUB_STEP_SUMMARY
