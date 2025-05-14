@@ -38,18 +38,17 @@ export class DeploymentChecker {
     const envHierarchy = this.environmentService.generateEnvHierarchy(envArray);
 
     // Get deployment SHAs and summaries
-    const { deploymentShas, summaries } =
-      await this.environmentService.getDeploymentShas(envArray);
+    const { deploymentShas, summaries } = await this.environmentService.getDeploymentShas(envArray);
 
     // Compare environments according to the hierarchy
-    await this.environmentService.compareAllEnvironments(
+    const updatedSummaries = await this.environmentService.compareAllEnvironments(
       summaries,
       deploymentShas,
       envHierarchy
     );
 
     // Generate the final summary
-    await this.reportService.generateFinalSummary(summaries, envHierarchy);
+    await this.reportService.generateFinalSummary(updatedSummaries, envHierarchy);
   }
 }
 

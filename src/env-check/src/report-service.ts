@@ -27,32 +27,16 @@ export class ReportService {
    * @param summaries Array of deployment summaries
    * @param envHierarchy Environment hierarchy mapping
    */
-  public async generateFinalSummary(
-    summaries: DeploymentSummary[],
-    envHierarchy: EnvironmentHierarchy
-  ): Promise<void> {
+  public async generateFinalSummary(summaries: DeploymentSummary[], envHierarchy: EnvironmentHierarchy): Promise<void> {
     core.info("📝 Generating final summary...");
 
     const summaryList = [...summaries].reverse();
 
-    // Create a new summary instance
-    let markdownSummary = core.summary.addHeading(
-      "Deployment Environment Status"
-    );
-
     // Add a table for the environment summaries
-    markdownSummary = this.addSummaryTable(
-      markdownSummary,
-      summaryList,
-      envHierarchy
-    );
+    let markdownSummary = this.addSummaryTable(core.summary, summaryList, envHierarchy);
 
     // Add detailed sections for each environment in reverse order
-    markdownSummary = this.addDetailedSections(
-      markdownSummary,
-      summaryList,
-      envHierarchy
-    );
+    markdownSummary = this.addDetailedSections(markdownSummary, summaryList, envHierarchy);
 
     // Write the summary
     await markdownSummary.write();
@@ -71,7 +55,7 @@ export class ReportService {
     summaryList: DeploymentSummary[],
     envHierarchy: EnvironmentHierarchy
   ): typeof core.summary {
-    return markdownSummary.addHeading("Environment Summaries", 2).addTable([
+    return markdownSummary.addHeading("Environments", 2).addTable([
       [
         { data: "Environment", header: true },
         { data: "Status", header: true },
@@ -83,9 +67,10 @@ export class ReportService {
 
         let status = "✅ Deployed";
         let details = `SHA: `;
-        details += `<a href=https://github.com/${this.owner}/${
-          this.repo
-        }/commit/${summary.sha}>${summary.sha.substring(0, 7)}</a>`;
+        details += `<a href=https://github.com/${this.owner}/${this.repo}/commit/${summary.sha}>${summary.sha.substring(
+          0,
+          7
+        )}</a>`;
 
         if (summary.changes) {
           if (summary.changes.ahead > 0) {
@@ -119,10 +104,7 @@ export class ReportService {
       const envName = summary.environment;
       const upstreamEnv = envHierarchy[envName];
 
-      markdownSummary = markdownSummary.addHeading(
-        `${envName.toUpperCase()} SUMMARY`,
-        2
-      );
+      markdownSummary = markdownSummary.addHeading(`${envName.toUpperCase()} SUMMARY`, 2);
 
       // Add the deployment SHA info
       markdownSummary = markdownSummary
@@ -131,19 +113,17 @@ export class ReportService {
           `${summary.sha.substring(0, 7)}`,
           `https://github.com/${this.owner}/${this.repo}/commit/${summary.sha}`
         )
+        .addRaw(` from `)
+        .addLink(`${summary.deployment_id}`, summary.target_url || "")
         .addRaw(`\n`);
 
       if (summary.compareUrl && upstreamEnv) {
-        markdownSummary = markdownSummary
-          .addLink(`Compare to ${upstreamEnv}`, summary.compareUrl)
-          .addRaw("\n\n");
+        markdownSummary = markdownSummary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl).addRaw("\n\n");
       }
 
       // Add commit list if available
       if (summary.changes?.commits && summary.changes.commits.length > 0) {
-        markdownSummary = markdownSummary.addRaw(
-          `#### Commits in ${upstreamEnv}\n\n`
-        );
+        markdownSummary = markdownSummary.addRaw(`#### Commits in ${upstreamEnv}\n\n`);
         markdownSummary = this.addCommitList(markdownSummary, summary);
       }
 
@@ -160,13 +140,9 @@ export class ReportService {
    * @returns Updated markdown summary
    * @private
    */
-  private addCommitList(
-    markdownSummary: typeof core.summary,
-    summary: DeploymentSummary
-  ): typeof core.summary {
+  private addCommitList(markdownSummary: typeof core.summary, summary: DeploymentSummary): typeof core.summary {
     for (const commit of summary.changes!.commits) {
-      const author =
-        commit.author?.login || commit.commit?.author?.name || "Unknown author";
+      const author = commit.author?.login || commit.commit?.author?.name || "Unknown author";
       const shortSha = commit.sha.substring(0, 7);
       const commitMessage = commit.commit?.message?.split("\n")[0] || "";
 
@@ -178,10 +154,7 @@ export class ReportService {
       const mergePrMatch = commitMessage.match(/Merge pull request #(\d+)/);
       if (mergePrMatch) {
         prNumber = mergePrMatch[1];
-        messageToDisplay = commitMessage.replace(
-          `Merge pull request #${prNumber} from `,
-          ""
-        );
+        messageToDisplay = commitMessage.replace(`Merge pull request #${prNumber} from `, "");
       }
       // Pattern 2: Message (#XX)
       else {
@@ -195,17 +168,11 @@ export class ReportService {
       if (prNumber) {
         markdownSummary = markdownSummary
           .addRaw(`- ${messageToDisplay} by @${author} in `)
-          .addLink(
-            `#${prNumber}`,
-            `https://github.com/${this.owner}/${this.repo}/pull/${prNumber}`
-          );
+          .addLink(`#${prNumber}`, `https://github.com/${this.owner}/${this.repo}/pull/${prNumber}`);
       } else {
         markdownSummary = markdownSummary
           .addRaw(`- ${commitMessage} by @${author} in `)
-          .addLink(
-            shortSha,
-            `https://github.com/${this.owner}/${this.repo}/commit/${commit.sha}`
-          );
+          .addLink(shortSha, `https://github.com/${this.owner}/${this.repo}/commit/${commit.sha}`);
       }
     }
 

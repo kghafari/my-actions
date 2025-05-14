@@ -4,13 +4,10 @@
 
 import { Octokit } from "@octokit/core";
 import * as core from "@actions/core";
-import {
-  Api,
-  restEndpointMethods,
-} from "@octokit/plugin-rest-endpoint-methods";
+import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
 import { throttling } from "@octokit/plugin-throttling";
 import { createActionAuth } from "@octokit/auth-action";
-import { EnhancedOctokit, ComparisonResult } from "./types";
+import { EnhancedOctokit, ComparisonResult, DeployInfo } from "./types";
 
 export class GitHubService {
   private readonly octokit: EnhancedOctokit;
@@ -32,10 +29,7 @@ export class GitHubService {
    * @param limit Maximum number of deployments to check (default: 15)
    * @returns SHA string or undefined if no successful deployment was found
    */
-  public async getLastSuccessfulDeploymentSha(
-    env: string,
-    limit = 15
-  ): Promise<string | undefined> {
+  public async getLastSuccessfulDeployment(env: string, limit = 15): Promise<DeployInfo | undefined> {
     core.info(`🔍 Finding last successful deployment for ${env}...`);
 
     try {
@@ -48,30 +42,28 @@ export class GitHubService {
         })
       ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-      core.info(
-        `  > Found ${deployments.length} deployments for ${env} environment`
-      );
+      core.info(`  > Found ${deployments.length} deployments for ${env} environment`);
 
       for (const deployment of deployments) {
-        const { data: statuses } =
-          await this.octokit.rest.repos.listDeploymentStatuses({
-            owner: this.owner,
-            repo: this.repo,
-            deployment_id: deployment.id,
-            per_page: 5, // Most deployments don't have tons of statuses
-          });
+        const { data: statuses } = await this.octokit.rest.repos.listDeploymentStatuses({
+          owner: this.owner,
+          repo: this.repo,
+          deployment_id: deployment.id,
+          per_page: 5, // Most deployments don't have tons of statuses
+        });
 
-        core.info(
-          `  > Found ${statuses.length} statuses for deployment ${deployment.id}`
-        );
+        core.info(`  > Found ${statuses.length} statuses for deployment ${deployment.id}`);
 
         const wasSuccessful = statuses.find((s) => s.state === "success");
 
         if (wasSuccessful) {
-          core.info(
-            `🏁 Found last successful ${deployment.environment} deployment: ${wasSuccessful.target_url}`
-          );
-          return deployment.sha;
+          core.info(`🏁 Found last successful ${deployment.environment} deployment: ${wasSuccessful.target_url}`);
+          return {
+            sha: deployment.sha,
+            target_url: wasSuccessful.target_url,
+            environment: deployment.environment,
+            deployment_id: wasSuccessful.id,
+          };
         }
       }
       return undefined;
@@ -124,9 +116,7 @@ export class GitHubService {
         head: toSha,
       });
 
-      core.info(
-        `📊 ${toEnv} is ${data.ahead_by} commits ahead and ${data.behind_by} commits behind ${fromEnv}`
-      );
+      core.info(`📊 ${toEnv} is ${data.ahead_by} commits ahead and ${data.behind_by} commits behind ${fromEnv}`);
 
       return {
         compareUrl: data.html_url,
@@ -171,18 +161,14 @@ export class GitHubService {
       authStrategy: createActionAuth,
       throttle: {
         onRateLimit: (retryAfter, options) => {
-          core.warning(
-            `Request quota exhausted for request ${options.method} ${options.url}`
-          );
+          core.warning(`Request quota exhausted for request ${options.method} ${options.url}`);
           if (options.request.retryCount === 0) {
             core.info(`Retrying after ${retryAfter} seconds!`);
             return true;
           }
         },
         onSecondaryRateLimit: (_retryAfter, options) => {
-          core.warning(
-            `Abuse detected for request ${options.method} ${options.url}`
-          );
+          core.warning(`Abuse detected for request ${options.method} ${options.url}`);
         },
       },
     });

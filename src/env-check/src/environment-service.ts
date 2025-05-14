@@ -3,11 +3,7 @@
  */
 
 import * as core from "@actions/core";
-import {
-  DeploymentSummary,
-  EnvironmentHierarchy,
-  EnvironmentShaMap,
-} from "./types";
+import { DeploymentSummary, EnvironmentHierarchy, EnvironmentShaMap } from "./types";
 import { GitHubService } from "./github-service";
 
 export class EnvironmentService {
@@ -48,7 +44,10 @@ export class EnvironmentService {
     summaries: DeploymentSummary[],
     deploymentShas: EnvironmentShaMap,
     envHierarchy: EnvironmentHierarchy
-  ): Promise<void> {
+  ): Promise<DeploymentSummary[]> {
+    // Create a copy of the summaries to avoid modifying the input directly
+    const updatedSummaries = [...summaries];
+
     // Compare each environment with its upstream
     for (const env of Object.keys(envHierarchy)) {
       const fromEnv = env;
@@ -60,25 +59,19 @@ export class EnvironmentService {
 
         core.info(`🔄 Comparing ${fromEnv}(${fromSha}) to ${toEnv}(${toSha})`);
 
-        const comparison = await this.githubService.compareDeployments(
-          fromEnv,
-          toEnv,
-          fromSha,
-          toSha
-        );
+        const comparison = await this.githubService.compareDeployments(fromEnv, toEnv, fromSha, toSha);
 
         // Find and update the summary for this environment
-        const summary = summaries.find((s) => s.environment === fromEnv);
+        const summary = updatedSummaries.find((s) => s.environment === fromEnv);
         if (summary) {
           summary.compareUrl = comparison.compareUrl;
           summary.changes = comparison.changes;
         }
       } else {
-        core.warning(
-          `Cannot compare ${fromEnv} to ${toEnv} - missing deployment SHA`
-        );
+        core.warning(`Cannot compare ${fromEnv} to ${toEnv} - missing deployment SHA`);
       }
     }
+    return updatedSummaries;
   }
 
   /**
@@ -97,17 +90,19 @@ export class EnvironmentService {
     for (const env of environments) {
       console.info(`Checking deployment for environment: ${env}`);
 
-      const sha = await this.githubService.getLastSuccessfulDeploymentSha(env);
-      if (sha) {
-        deploymentShas[env] = sha;
-        core.setOutput(`last_successful_deployment_sha_${env}`, sha);
+      const deployment = await this.githubService.getLastSuccessfulDeployment(env);
+      if (deployment) {
+        deploymentShas[env] = deployment.sha;
+        core.setOutput(`last_successful_deployment_sha_${env}`, deployment);
 
         summaries.push({
           environment: env,
-          sha: sha,
+          sha: deployment.sha,
+          target_url: deployment.target_url,
+          deployment_id: deployment.deployment_id,
         });
 
-        core.info(`ℹ️ Found deployment SHA for ${env}: ${sha}`);
+        core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);
       } else {
         core.warning(`No successful deployment found for ${env}`);
       }

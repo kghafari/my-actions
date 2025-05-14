@@ -1,22 +1,14 @@
-/**
- * Types and interfaces for the deployment checker
- */
-
 import { Octokit } from "@octokit/core";
 import { Api } from "@octokit/plugin-rest-endpoint-methods";
 
-/**
- * Enhanced Octokit type that includes REST API methods
- */
 export type EnhancedOctokit = Octokit & Api;
 
-/**
- * Interface representing deployment details
- */
 export interface DeploymentSummary {
   environment: string;
   sha: string;
   compareUrl?: string;
+  target_url?: string;
+  deployment_id?: number;
   changes?: {
     ahead: number;
     behind: number;
@@ -24,9 +16,6 @@ export interface DeploymentSummary {
   };
 }
 
-/**
- * Interface representing comparison results between two environments
- */
 export interface ComparisonResult {
   compareUrl: string;
   changes: {
@@ -34,6 +23,13 @@ export interface ComparisonResult {
     behind: number;
     commits: any[];
   };
+}
+
+export interface DeployInfo {
+  sha: string;
+  target_url: string;
+  environment: string;
+  deployment_id: number;
 }
 
 /**
