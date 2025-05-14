@@ -200,15 +200,15 @@ export class ReportService {
             `#${prNumber}`,
             `https://github.com/${this.owner}/${this.repo}/pull/${prNumber}`
           )
-          .addRaw(`${messageToDisplay}\n`);
+          .addRaw(`${messageToDisplay}`);
       } else {
         markdownSummary = markdownSummary
-          .addRaw(`\- ${author}: `)
+          .addRaw(`\-- ${author}: `)
           .addLink(
             shortSha,
             `https://github.com/${this.owner}/${this.repo}/commit/${commit.sha}`
           )
-          .addRaw(`${commitMessage}\n`);
+          .addRaw(`${commitMessage}`);
       }
     }
 
