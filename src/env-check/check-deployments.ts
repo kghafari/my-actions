@@ -14,6 +14,34 @@ const octokit = configureOctokit();
 const GITHUB_REPO = core.getInput("GITHUB_REPO");
 const [OWNER, REPO] = GITHUB_REPO.split("/");
 
+// Function to generate environment hierarchy based on comma-separated environments
+function generateEnvHierarchy(environments: string[]): Record<string, string> {
+  const hierarchy: Record<string, string> = {};
+
+  // For the first environment, the upstream is 'main'
+  if (environments.length > 0) {
+    hierarchy[environments[0]] = "main";
+  }
+
+  // For subsequent environments, the upstream is the previous environment
+  for (let i = 1; i < environments.length; i++) {
+    hierarchy[environments[i]] = environments[i - 1];
+  }
+
+  return hierarchy;
+}
+
+interface DeploymentSummary {
+  environment: string;
+  sha: string;
+  compareUrl?: string;
+  changes?: {
+    ahead: number;
+    behind: number;
+    commits: any[];
+  };
+}
+
 export function executeTask(task: string) {
   console.info(`Executing task: ${task}. This is Action Two!`);
 }
@@ -23,25 +51,235 @@ export async function checkDeployments(environments: string) {
   // split the environments string into an array
   const envArray = environments.split(",");
 
+  // Generate the environment hierarchy based on the input environments
+  const envHierarchy = generateEnvHierarchy(envArray);
+
+  const deploymentShas: Record<string, string> = {};
+  const summaries: DeploymentSummary[] = [];
+
   // Get the last successful deployment SHA for each environment
   for (const env of envArray) {
     console.info(`Checking deployment for environment: ${env}`);
 
     const sha = await getLastSuccessfulDeploymentSha(env);
     if (sha) {
+      deploymentShas[env] = sha;
       core.setOutput(`last_successful_deployment_sha_${env}`, sha);
-      core.summary
-        .addHeading(`Last successful deployment SHA for ${env}: ${sha}`)
-        .addLink(
-          `View deployment`,
-          `https://github.com/${OWNER}/${REPO}/commit/${sha}`
-        )
-        .write();
+
+      summaries.push({
+        environment: env,
+        sha: sha,
+      });
+
+      core.info(`ℹ️ Found deployment SHA for ${env}: ${sha}`);
     } else {
       core.warning(`No successful deployment found for ${env}`);
-      core.summary.addHeading(`Sad face :(`);
     }
   }
+
+  // If we have main branch SHA, add it
+  if (!deploymentShas["main"]) {
+    try {
+      const { data: mainBranch } = await octokit.rest.repos.getBranch({
+        owner: OWNER,
+        repo: REPO,
+        branch: "main",
+      });
+
+      deploymentShas["main"] = mainBranch.commit.sha;
+      core.info(`ℹ️ Using main branch SHA: ${deploymentShas["main"]}`);
+    } catch (err) {
+      core.warning(`Unable to get main branch SHA: ${err}`);
+    }
+  }
+
+  // Now compare environments according to the hierarchy
+  await compareAllEnvironments(summaries, deploymentShas, envHierarchy);
+
+  // Generate the final summary
+  await generateFinalSummary(summaries, envHierarchy);
+}
+
+async function compareAllEnvironments(
+  summaries: DeploymentSummary[],
+  deploymentShas: Record<string, string>,
+  envHierarchy: Record<string, string>
+) {
+  // Compare each environment with its upstream
+  for (const env of Object.keys(envHierarchy)) {
+    const fromEnv = env;
+    const toEnv = envHierarchy[env];
+
+    if (deploymentShas[fromEnv] && deploymentShas[toEnv]) {
+      const fromSha = deploymentShas[fromEnv];
+      const toSha = deploymentShas[toEnv];
+
+      core.info(`🔄 Comparing ${fromEnv}(${fromSha}) to ${toEnv}(${toSha})`);
+
+      const comparison = await compareDeployments(
+        fromEnv,
+        toEnv,
+        fromSha,
+        toSha
+      );
+
+      // Find and update the summary for this environment
+      const summary = summaries.find((s) => s.environment === fromEnv);
+      if (summary) {
+        summary.compareUrl = comparison.compareUrl;
+        summary.changes = comparison.changes;
+      }
+    } else {
+      core.warning(
+        `Cannot compare ${fromEnv} to ${toEnv} - missing deployment SHA`
+      );
+    }
+  }
+}
+
+async function compareDeployments(
+  fromEnv: string,
+  toEnv: string,
+  fromSha: string,
+  toSha: string
+): Promise<{
+  compareUrl: string;
+  changes: { ahead: number; behind: number; commits: any[] };
+}> {
+  try {
+    const { data } = await octokit.rest.repos.compareCommits({
+      owner: OWNER,
+      repo: REPO,
+      base: fromSha,
+      head: toSha,
+    });
+
+    core.info(
+      `📊 ${toEnv} is ${data.ahead_by} commits ahead and ${data.behind_by} commits behind ${fromEnv}`
+    );
+
+    return {
+      compareUrl: data.html_url,
+      changes: {
+        ahead: data.ahead_by,
+        behind: data.behind_by,
+        commits: data.commits,
+      },
+    };
+  } catch (err) {
+    core.warning(`Error comparing deployments: ${err}`);
+    return {
+      compareUrl: `https://github.com/${OWNER}/${REPO}/compare/${fromSha}...${toSha}`,
+      changes: {
+        ahead: 0,
+        behind: 0,
+        commits: [],
+      },
+    };
+  }
+}
+
+async function generateFinalSummary(
+  summaries: DeploymentSummary[],
+  envHierarchy: Record<string, string>
+) {
+  core.info("📝 Generating final summary...");
+
+  // Create a new summary instance
+  let markdownSummary = core.summary.addHeading(
+    "Deployment Environment Status"
+  );
+
+  // Add a table for the environment summaries
+  markdownSummary = markdownSummary
+    .addHeading("Environment Summaries", 2)
+    .addTable([
+      [
+        { data: "Environment", header: true },
+        { data: "Status", header: true },
+        { data: "Details", header: true },
+      ],
+      ...summaries.map((summary) => {
+        const envName = summary.environment;
+        const upstreamEnv = envHierarchy[envName];
+
+        let status = "✅ Deployed";
+        let details = `SHA: ${summary.sha.substring(0, 7)}`;
+
+        if (summary.changes) {
+          if (summary.changes.ahead > 0) {
+            details += ` | ${upstreamEnv} is ${summary.changes.ahead} commits ahead`;
+          }
+
+          if (summary.changes.behind > 0) {
+            details += ` | ${upstreamEnv} is ${summary.changes.behind} commits behind`;
+          }
+        }
+
+        return [envName, status, details];
+      }),
+    ]);
+
+  // Add detailed sections for each environment
+  for (const summary of summaries) {
+    const envName = summary.environment;
+    const upstreamEnv = envHierarchy[envName];
+
+    markdownSummary = markdownSummary.addHeading(
+      `${envName.toUpperCase()} SUMMARY`,
+      2
+    );
+
+    // Add the deployment SHA info
+    markdownSummary = markdownSummary
+      .addLink(
+        `Last successful deployment`,
+        `https://github.com/${OWNER}/${REPO}/commit/${summary.sha}`
+      )
+      .addRaw(`\n\nDeployment SHA: \`${summary.sha}\`\n\n`);
+
+    // Add comparison info if available
+    if (summary.compareUrl && upstreamEnv) {
+      markdownSummary = markdownSummary
+        .addLink(`Compare with ${upstreamEnv}`, summary.compareUrl)
+        .addRaw("\n\n");
+
+      if (summary.changes && summary.changes.commits.length > 0) {
+        markdownSummary = markdownSummary.addHeading(
+          `Changes between ${envName} and ${upstreamEnv}`,
+          3
+        );
+
+        // List some recent commits in the comparison
+        const maxCommitsToShow = 10;
+        const commitsToShow = summary.changes.commits.slice(
+          0,
+          maxCommitsToShow
+        );
+
+        for (const commit of commitsToShow) {
+          const shortSha = commit.sha.substring(0, 7);
+          const message = commit.commit.message.split("\n")[0]; // Get first line of commit message
+
+          markdownSummary = markdownSummary.addRaw(
+            `- ${shortSha}: ${message} (${commit.author?.login || "unknown"})\n`
+          );
+        }
+
+        // Show ellipsis if there are more commits
+        if (summary.changes.commits.length > maxCommitsToShow) {
+          markdownSummary = markdownSummary.addRaw(
+            `- ... and ${
+              summary.changes.commits.length - maxCommitsToShow
+            } more commits\n`
+          );
+        }
+      }
+    }
+  }
+
+  // Write the summary
+  await markdownSummary.write();
 }
 
 async function getLastSuccessfulDeploymentSha(
@@ -78,7 +316,7 @@ async function getLastSuccessfulDeploymentSha(
 
       if (wasSuccessful) {
         core.info(
-          `🏁Found last successful ${deployment.environment} deployment: ${wasSuccessful.target_url}`
+          `🏁 Found last successful ${deployment.environment} deployment: ${wasSuccessful.target_url}`
         );
         return deployment.sha;
       }
