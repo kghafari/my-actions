@@ -219,9 +219,8 @@ async function generateFinalSummary(
         return [envName, status, details];
       }),
     ]);
-
-  // Add detailed sections for each environment
-  for (const summary of summaries) {
+  // Add detailed sections for each environment in reverse order
+  for (const summary of [...summaries].reverse()) {
     const envName = summary.environment;
     const upstreamEnv = envHierarchy[envName];
 
@@ -238,43 +237,53 @@ async function generateFinalSummary(
       )
       .addRaw(`\n\nDeployment SHA: \`${summary.sha}\`\n\n`);
 
+    // Add commit list if available
+    if (summary.changes?.commits && summary.changes.commits.length > 0) {
+      markdownSummary = markdownSummary.addRaw(`#### Commits\n\n`);
+
+      // Add each commit with author and PR details if available
+      for (const commit of summary.changes.commits) {
+        const author =
+          commit.author?.login ||
+          commit.commit?.author?.name ||
+          "Unknown author";
+        const shortSha = commit.sha.substring(0, 7);
+        const commitMessage = commit.commit?.message?.split("\n")[0] || "";
+
+        // Check for PR number in the commit message (common PR merge pattern)
+        const prMatch = commitMessage.match(/Merge pull request #(\d+)/);
+
+        if (prMatch) {
+          const prNumber = prMatch[1];
+          markdownSummary = markdownSummary
+            .addRaw(`- ${author}: `)
+            .addLink(
+              `#${prNumber} ${commitMessage.replace(
+                `Merge pull request #${prNumber} from `,
+                ""
+              )}`,
+              `https://github.com/${OWNER}/${REPO}/pull/${prNumber}`
+            )
+            .addRaw(`\n`);
+        } else {
+          markdownSummary = markdownSummary
+            .addRaw(`- ${author}: `)
+            .addLink(
+              shortSha,
+              `https://github.com/${OWNER}/${REPO}/commit/${commit.sha}`
+            )
+            .addRaw(` ${commitMessage}\n`);
+        }
+      }
+
+      markdownSummary = markdownSummary.addRaw(`\n`);
+    }
+
     // Add comparison info if available
     if (summary.compareUrl && upstreamEnv) {
       markdownSummary = markdownSummary
         .addLink(`Compare with ${upstreamEnv}`, summary.compareUrl)
         .addRaw("\n\n");
-
-      if (summary.changes && summary.changes.commits.length > 0) {
-        markdownSummary = markdownSummary.addHeading(
-          `Changes between ${envName} and ${upstreamEnv}`,
-          3
-        );
-
-        // List some recent commits in the comparison
-        const maxCommitsToShow = 10;
-        const commitsToShow = summary.changes.commits.slice(
-          0,
-          maxCommitsToShow
-        );
-
-        for (const commit of commitsToShow) {
-          const shortSha = commit.sha.substring(0, 7);
-          const message = commit.commit.message.split("\n")[0]; // Get first line of commit message
-
-          markdownSummary = markdownSummary.addRaw(
-            `- ${shortSha}: ${message} (${commit.author?.login || "unknown"})\n`
-          );
-        }
-
-        // Show ellipsis if there are more commits
-        if (summary.changes.commits.length > maxCommitsToShow) {
-          markdownSummary = markdownSummary.addRaw(
-            `- ... and ${
-              summary.changes.commits.length - maxCommitsToShow
-            } more commits\n`
-          );
-        }
-      }
     }
   }
 
