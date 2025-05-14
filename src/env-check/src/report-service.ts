@@ -85,7 +85,7 @@ export class ReportService {
         let details = `SHA: `;
         details += `<a href=https://github.com/${this.owner}/${
           this.repo
-        }/commit/${summary.sha})>${summary.sha.substring(0, 7)}</a>`;
+        }/commit/${summary.sha}>${summary.sha.substring(0, 7)}</a>`;
 
         if (summary.changes) {
           if (summary.changes.ahead > 0) {
