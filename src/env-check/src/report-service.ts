@@ -82,12 +82,10 @@ export class ReportService {
         const upstreamEnv = envHierarchy[envName];
 
         let status = "✅ Deployed";
-        let details = `SHA: [${summary.sha.substring(
-          0,
-          7
-        )}](https://github.com/${this.owner}/${this.repo}/commit/${
-          summary.sha
-        })`;
+        let details = `SHA: `;
+        details += `[${summary.sha.substring(0, 7)}](https://github.com/${
+          this.owner
+        }/${this.repo}/commit/${summary.sha})`;
 
         if (summary.changes) {
           if (summary.changes.ahead > 0) {
@@ -128,7 +126,7 @@ export class ReportService {
 
       // Add the deployment SHA info
       markdownSummary = markdownSummary
-        .addRaw(`Last Deployed to ${envName}:`)
+        .addRaw(`Last Deployed to ${envName}: `)
         .addLink(
           `${summary.sha.substring(0, 7)}`,
           `https://github.com/${this.owner}/${this.repo}/commit/${summary.sha}`
@@ -143,6 +141,9 @@ export class ReportService {
 
       // Add commit list if available
       if (summary.changes?.commits && summary.changes.commits.length > 0) {
+        markdownSummary = markdownSummary.addRaw(
+          `#### Commits in ${upstreamEnv}\n\n`
+        );
         markdownSummary = this.addCommitList(markdownSummary, summary);
       }
 
@@ -163,8 +164,6 @@ export class ReportService {
     markdownSummary: typeof core.summary,
     summary: DeploymentSummary
   ): typeof core.summary {
-    markdownSummary = markdownSummary.addRaw(`#### Commits\n\n`);
-
     for (const commit of summary.changes!.commits) {
       const author =
         commit.author?.login || commit.commit?.author?.name || "Unknown author";
@@ -195,20 +194,18 @@ export class ReportService {
 
       if (prNumber) {
         markdownSummary = markdownSummary
-          .addRaw(`\-- ${messageToDisplay} by @${author} in `)
+          .addRaw(`- ${messageToDisplay} by @${author} in `)
           .addLink(
             `#${prNumber}`,
             `https://github.com/${this.owner}/${this.repo}/pull/${prNumber}`
-          )
-          .addRaw(` `);
+          );
       } else {
         markdownSummary = markdownSummary
-          .addRaw(`\-- ${commitMessage} by @${author} in `)
+          .addRaw(`- ${commitMessage} by @${author} in `)
           .addLink(
             shortSha,
             `https://github.com/${this.owner}/${this.repo}/commit/${commit.sha}`
-          )
-          .addRaw(``);
+          );
       }
     }
 

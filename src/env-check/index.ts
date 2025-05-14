@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { checkDeployments } from "./check-deployments";
+import { checkDeployments } from "./src/check-deployments";
 
 async function run() {
   try {
