@@ -35,7 +35,8 @@ export async function checkDeployments(environments: string) {
         .addLink(
           `View deployment`,
           `https://github.com/${OWNER}/${REPO}/commit/${sha}`
-        );
+        )
+        .write();
     } else {
       core.warning(`No successful deployment found for ${env}`);
       core.summary.addHeading(`Sad face :(`);
