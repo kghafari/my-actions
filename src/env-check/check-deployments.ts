@@ -23,11 +23,10 @@ export async function checkDeployments(environments: string) {
   // split the environments string into an array
   const envArray = environments.split(",");
 
-  envArray.forEach((env) => {
-    console.info(`Checking deployment for environment: ${env}`);
-  });
   // Get the last successful deployment SHA for each environment
-  envArray.forEach(async (env) => {
+  for (const env of envArray) {
+    console.info(`Checking deployment for environment: ${env}`);
+
     const sha = await getLastSuccessfulDeploymentSha(env);
     if (sha) {
       core.setOutput(`last_successful_deployment_sha_${env}`, sha);
@@ -41,7 +40,7 @@ export async function checkDeployments(environments: string) {
       core.warning(`No successful deployment found for ${env}`);
       core.summary.addHeading(`Sad face :(`);
     }
-  });
+  }
 }
 
 async function getLastSuccessfulDeploymentSha(
@@ -62,6 +61,7 @@ async function getLastSuccessfulDeploymentSha(
     core.info(
       `  > Found ${deployments.length} deployments for ${env} environment`
     );
+    core.info(JSON.stringify(deployments, null, 2));
     for (const deployment of deployments) {
       const { data: statuses } =
         await octokit.rest.repos.listDeploymentStatuses({
@@ -74,7 +74,7 @@ async function getLastSuccessfulDeploymentSha(
       core.info(
         `  > Found ${statuses.length} statuses for deployment ${deployment.id}`
       );
-      core.info(JSON.stringify(statuses));
+      core.info(JSON.stringify(statuses, null, 2));
       const wasSuccessful = statuses.find((s) => s.state === "success");
 
       if (wasSuccessful) {
@@ -83,11 +83,12 @@ async function getLastSuccessfulDeploymentSha(
         );
         return deployment.sha;
       }
-      return undefined;
     }
+    return undefined;
   } catch (err) {
     core.warning(`No successful ${env} deployments found 😵💫`);
     core.setFailed(String(err));
+    return undefined;
   }
 }
 
