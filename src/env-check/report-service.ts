@@ -195,20 +195,20 @@ export class ReportService {
 
       if (prNumber) {
         markdownSummary = markdownSummary
-          .addRaw(` ${author}: `)
+          .addRaw(`\-- ${messageToDisplay} by @${author} in `)
           .addLink(
             `#${prNumber}`,
             `https://github.com/${this.owner}/${this.repo}/pull/${prNumber}`
           )
-          .addRaw(`${messageToDisplay}`);
+          .addRaw(` `);
       } else {
         markdownSummary = markdownSummary
-          .addRaw(`\-- ${author}: `)
+          .addRaw(`\-- ${commitMessage} by @${author} in `)
           .addLink(
             shortSha,
             `https://github.com/${this.owner}/${this.repo}/commit/${commit.sha}`
           )
-          .addRaw(`${commitMessage}`);
+          .addRaw(``);
       }
     }
 
