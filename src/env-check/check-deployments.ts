@@ -47,7 +47,6 @@ export function executeTask(task: string) {
 }
 
 export async function checkDeployments(environments: string) {
-  logInputs();
   // split the environments string into an array
   const envArray = environments.split(",");
 
@@ -185,6 +184,7 @@ async function generateFinalSummary(
 ) {
   core.info("📝 Generating final summary...");
 
+  const summaryList = [...summaries].reverse();
   // Create a new summary instance
   let markdownSummary = core.summary.addHeading(
     "Deployment Environment Status"
@@ -199,7 +199,7 @@ async function generateFinalSummary(
         { data: "Status", header: true },
         { data: "Details", header: true },
       ],
-      ...summaries.map((summary) => {
+      ...summaryList.map((summary) => {
         const envName = summary.environment;
         const upstreamEnv = envHierarchy[envName];
 
@@ -220,7 +220,7 @@ async function generateFinalSummary(
       }),
     ]);
   // Add detailed sections for each environment in reverse order
-  for (const summary of [...summaries].reverse()) {
+  for (const summary of summaryList) {
     const envName = summary.environment;
     const upstreamEnv = envHierarchy[envName];
 
@@ -239,9 +239,7 @@ async function generateFinalSummary(
 
     // Add commit list if available
     if (summary.changes?.commits && summary.changes.commits.length > 0) {
-      markdownSummary = markdownSummary.addRaw(`#### Commits\n\n`);
-
-      // Add each commit with author and PR details if available
+      markdownSummary = markdownSummary.addRaw(`#### Commits\n\n`); // Add each commit with author and PR details if available
       for (const commit of summary.changes.commits) {
         const author =
           commit.author?.login ||
@@ -250,18 +248,35 @@ async function generateFinalSummary(
         const shortSha = commit.sha.substring(0, 7);
         const commitMessage = commit.commit?.message?.split("\n")[0] || "";
 
-        // Check for PR number in the commit message (common PR merge pattern)
-        const prMatch = commitMessage.match(/Merge pull request #(\d+)/);
+        // Check for PR number in the commit message with multiple patterns
+        let prNumber: string | null = null;
+        let messageToDisplay = commitMessage;
 
-        if (prMatch) {
-          const prNumber = prMatch[1];
+        // Pattern 1: Merge pull request #XX from...
+        const mergePrMatch = commitMessage.match(/Merge pull request #(\d+)/);
+        if (mergePrMatch) {
+          prNumber = mergePrMatch[1];
+          messageToDisplay = commitMessage.replace(
+            `Merge pull request #${prNumber} from `,
+            ""
+          );
+        }
+        // Pattern 2: Message (#XX)
+        else {
+          const inlinePrMatch = commitMessage.match(/.*\(#(\d+)\)/);
+          if (inlinePrMatch) {
+            prNumber = inlinePrMatch[1];
+            messageToDisplay = commitMessage
+              .replace(`(#${prNumber})`, "")
+              .trim();
+          }
+        }
+
+        if (prNumber) {
           markdownSummary = markdownSummary
             .addRaw(`- ${author}: `)
             .addLink(
-              `#${prNumber} ${commitMessage.replace(
-                `Merge pull request #${prNumber} from `,
-                ""
-              )}`,
+              `#${prNumber} ${messageToDisplay}`,
               `https://github.com/${OWNER}/${REPO}/pull/${prNumber}`
             )
             .addRaw(`\n`);
@@ -336,17 +351,6 @@ async function getLastSuccessfulDeploymentSha(
     core.setFailed(String(err));
     return undefined;
   }
-}
-
-function logInputs() {
-  core.info("Logging inputs...");
-  core.info(`GITHUB_REPO: ${GITHUB_REPO}`);
-  core.info(`OWNER: ${OWNER}`);
-  core.info(`REPO: ${REPO}`);
-  core.info(`GITHUB_REPOSITORY: ${process.env.GITHUB_REPOSITORY}`);
-  core.info(`GITHUB_REF: ${process.env.GITHUB_REF}`);
-  core.info(`GITHUB_SHA: ${process.env.GITHUB_SHA}`);
-  core.info(`GITHUB_EVENT_NAME: ${process.env.GITHUB_EVENT_NAME}`);
 }
 
 function configureOctokit(): Octokit & Api {
