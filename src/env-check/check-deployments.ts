@@ -61,7 +61,6 @@ async function getLastSuccessfulDeploymentSha(
     core.info(
       `  > Found ${deployments.length} deployments for ${env} environment`
     );
-    core.info(JSON.stringify(deployments, null, 2));
     for (const deployment of deployments) {
       const { data: statuses } =
         await octokit.rest.repos.listDeploymentStatuses({
@@ -74,7 +73,6 @@ async function getLastSuccessfulDeploymentSha(
       core.info(
         `  > Found ${statuses.length} statuses for deployment ${deployment.id}`
       );
-      core.info(JSON.stringify(statuses, null, 2));
       const wasSuccessful = statuses.find((s) => s.state === "success");
 
       if (wasSuccessful) {
