@@ -77,6 +77,8 @@ export class EnvironmentService {
           sha: deployment.sha,
           target_url: deployment.target_url,
           deployment_id: deployment.deployment_id,
+          release_url: deployment.release_url,
+          ref: deployment.ref,
         });
 
         core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);

@@ -62,6 +62,7 @@ export class GitHubService {
             environment: deployment.environment,
             deployment_id: deployment.id,
             release_url: await this.getReleaseUrl(deployment.ref),
+            ref: deployment.ref,
           };
         }
       }

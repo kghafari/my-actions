@@ -98,7 +98,7 @@ export class ReportService {
         // TODO: get correct workflow run URL
         .addLink(`job`, summary.target_url || "")
         .addRaw(` via `)
-        .addLink(`deployment`, summary.release_url || "")
+        .addLink(`${summary.ref}`, summary.release_url || "")
         .addRaw(`\n`);
 
       if (summary.compareUrl && upstreamEnv) {
