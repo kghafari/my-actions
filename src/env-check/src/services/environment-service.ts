@@ -113,7 +113,7 @@ export class EnvironmentService {
       const toEnv = envHierarchy[env];
 
       if (deploymentShas[fromEnv] && deploymentShas[toEnv]) {
-        const comparison = await this.githubService.compareDeployments(fromEnv, toEnv);
+        const comparison = await this.githubService.compareDeployments(deploymentShas[fromEnv], deploymentShas[toEnv]);
 
         // Find and update the summary for this environment
         const summary = summaries.find((s) => s.environment === fromEnv);
