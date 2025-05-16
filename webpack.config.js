@@ -1,34 +1,27 @@
-import path from "path";
-import { fileURLToPath } from "url";
+const path = require('path');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export default {
+module.exports = {
   entry: {
-    "action-one": "./src/action-one/index.ts",
-    "action-two": "./src/action-two/index.ts",
-    "env-check": "./src/env-check/index.ts",
+    'action-one': './src/action-one/index.ts',
+    'action-two': './src/action-two/index.ts',
+    'env-check': './src/env-check/index.ts',
   },
   output: {
-    path: path.resolve(__dirname, "src"),
-    filename: "[name]/index.js",
+    path: path.resolve(__dirname, 'src'),
+    filename: '[name]/index.js',
   },
   resolve: {
-    extensions: [".ts", ".js"],
-    extensionAlias: {
-      ".js": [".js", ".ts"], // This helps with ESM imports
-    },
+    extensions: ['.ts', '.js'],
   },
   module: {
     rules: [
       {
         test: /\.ts$/,
-        use: "ts-loader",
+        use: 'ts-loader',
         exclude: /node_modules/,
       },
     ],
   },
-  target: "node",
-  mode: "production",
+  target: 'node',
+  mode: 'production',
 };

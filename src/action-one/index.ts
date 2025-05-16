@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { greet } from "./utils.js";
+import { greet } from "./utils";
 
 async function run() {
   try {

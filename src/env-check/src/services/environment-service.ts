@@ -1,11 +1,6 @@
 import * as core from "@actions/core";
-import {
-  Deployment,
-  EnvironmentHierarchy,
-  EnvironmentShaMap as DeploymentShaMap,
-  DeploymentSummary,
-} from "../types.js";
-import { GitHubService } from "./github-service.js";
+import { Deployment, EnvironmentHierarchy, EnvironmentShaMap as DeploymentShaMap, DeploymentSummary } from "../types";
+import { GitHubService } from "./github-service";
 
 export class EnvironmentService {
   private readonly githubService: GitHubService;
@@ -82,7 +77,6 @@ export class EnvironmentService {
           sha: deployment.sha,
           target_url: deployment.target_url,
           deployment_id: deployment.deployment_id,
-          release_url: deployment.release_url,
         });
 
         core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);

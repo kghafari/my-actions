@@ -12,7 +12,7 @@ yarn-error.log*
 *.tsbuildinfo
 
 # Build artifacts (excluding dist)
-dist/
+!dist/
 
 # IDE files
 .vscode/

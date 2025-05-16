@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { Deployment, DeploymentSummary, EnvironmentHierarchy, GitHubConfig } from "../types.js";
+import { Deployment, DeploymentSummary, EnvironmentHierarchy, GitHubConfig } from "../types";
 
 export class ReportService {
   constructor(private readonly config: GitHubConfig) {
@@ -97,8 +97,6 @@ export class ReportService {
         .addRaw(` from `)
         // TODO: get correct workflow run URL
         .addLink(`job`, summary.target_url || "")
-        .addRaw(` via `)
-        .addLink(`deployment`, summary.release_url || "")
         .addRaw(`\n`);
 
       if (summary.compareUrl && upstreamEnv) {
@@ -156,8 +154,6 @@ export class ReportService {
           .addRaw(`- ${commitMessage} by @${author} in `)
           .addLink(shortSha, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
       }
-
-      markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${summary.target_url}`);
     }
 
     return markdownSummary.addRaw(`\n\n`);
