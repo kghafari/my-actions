@@ -82,6 +82,8 @@ export class GitHubService {
         tag: ref,
       });
 
+      core.info(`ℹ️ Found release URL for ${ref}: ${release.html_url}`);
+
       return release.html_url;
     } catch (err) {
       return "";
@@ -104,15 +106,13 @@ export class GitHubService {
   }
 
   /**
-   * Compare deployments between two SHAs
-   * @param fromEnv Source environment name for context
-   * @param toEnv Target environment name for context
    * @param fromSha Source SHA
    * @param toSha Target SHA
    * @returns ComparisonResult with commit changes and URL
    */
   public async compareDeployments(fromSha: string, toSha: string): Promise<ComparisonResult> {
     try {
+      console.info(`🔍 Comparing deployments ${fromSha}...${toSha}`);
       const { data } = await this.octokit.rest.repos.compareCommits({
         owner: this.config.owner,
         repo: this.config.repo,
