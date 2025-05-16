@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { executeTask } from "./utils";
+import { executeTask } from "./utils.js";
 
 async function run() {
   try {

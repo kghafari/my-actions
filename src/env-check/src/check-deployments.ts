@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
-import { EnvironmentService } from "./services/environment-service";
-import { ReportService } from "./services/report-service";
-import { GitHubConfig } from "./types";
+import { EnvironmentService } from "./services/environment-service.js";
+import { ReportService } from "./services/report-service.js";
+import { GitHubConfig } from "./types.js";
 
 class DeploymentChecker {
   constructor(

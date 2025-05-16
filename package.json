@@ -2,9 +2,12 @@
   "name": "my-actions",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack"
+    "build": "webpack",
+    "checker:debug": "node --loader ts-node/esm src/env-check/index.ts",
+    "debug": "node --loader ts-node/esm"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +16,10 @@
   "devDependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
+    "@types/node": "^22.15.18",
+    "source-map-support": "^0.5.21",
     "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "webpack": "^5.99.5",
     "webpack-cli": "^6.0.1"

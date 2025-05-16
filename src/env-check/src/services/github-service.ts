@@ -7,8 +7,8 @@ import * as core from "@actions/core";
 import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
 import { throttling } from "@octokit/plugin-throttling";
 import { createActionAuth } from "@octokit/auth-action";
-import { EnhancedOctokit, ComparisonResult, DeployInfo, GitHubConfig } from "../types";
-import { getConfig } from "../check-deployments";
+import { EnhancedOctokit, ComparisonResult, DeployInfo, GitHubConfig } from "../types.js";
+import { getConfig } from "../check-deployments.js";
 
 export class GitHubService {
   private readonly octokit: EnhancedOctokit;
@@ -54,11 +54,15 @@ export class GitHubService {
 
         if (wasSuccessful) {
           core.info(`🏁 Found last successful ${deployment.environment} deployment: ${wasSuccessful.target_url}`);
+
           return {
             sha: deployment.sha,
-            target_url: wasSuccessful.target_url,
+            target_url: wasSuccessful.log_url
+              ? wasSuccessful.log_url.split("/job/")[0]
+              : wasSuccessful.target_url.split("/job/")[0],
             environment: deployment.environment,
             deployment_id: deployment.id,
+            release_url: await this.getReleaseUrl(deployment.ref),
           };
         }
       }
@@ -67,6 +71,20 @@ export class GitHubService {
       core.warning(`No successful ${env} deployments found 😵💫`);
       core.setFailed(String(err));
       return undefined;
+    }
+  }
+
+  private async getReleaseUrl(ref: string): Promise<string> {
+    try {
+      const { data: release } = await this.octokit.rest.repos.getReleaseByTag({
+        owner: this.config.owner,
+        repo: this.config.repo,
+        tag: ref,
+      });
+
+      return release.html_url;
+    } catch (err) {
+      return "";
     }
   }
 

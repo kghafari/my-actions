@@ -14,6 +14,7 @@ export interface Deployment {
   compareUrl?: string;
   target_url?: string;
   deployment_id?: number;
+  release_url?: string;
   changes?: {
     ahead: number;
     behind: number;
@@ -35,6 +36,8 @@ export interface DeployInfo {
   target_url: string;
   environment: string;
   deployment_id: number;
+  workflow_url?: string;
+  release_url?: string;
 }
 
 /**
