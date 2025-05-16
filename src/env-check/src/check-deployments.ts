@@ -3,7 +3,7 @@ import { EnvironmentService } from "./services/environment-service";
 import { ReportService } from "./services/report-service";
 import { GitHubConfig } from "./types";
 
-class DeploymentChecker {
+export class DeploymentChecker {
   constructor(
     private readonly config: GitHubConfig,
     private readonly environmentService: EnvironmentService,
