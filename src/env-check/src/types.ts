@@ -4,6 +4,11 @@ import { Api } from "@octokit/plugin-rest-endpoint-methods";
 export type EnhancedOctokit = Octokit & Api;
 
 export interface DeploymentSummary {
+  environmentHierarchy: EnvironmentHierarchy;
+  deploymentSummaries: Deployment[];
+}
+
+export interface Deployment {
   environment: string;
   sha: string;
   compareUrl?: string;
@@ -42,3 +47,9 @@ export type EnvironmentHierarchy = Record<string, string>;
  * Mapping of environment names to their deployment SHAs
  */
 export type EnvironmentShaMap = Record<string, string>;
+
+export interface GitHubConfig {
+  owner: string;
+  repo: string;
+  environments: string[];
+}

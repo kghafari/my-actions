@@ -7,20 +7,16 @@ import * as core from "@actions/core";
 import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
 import { throttling } from "@octokit/plugin-throttling";
 import { createActionAuth } from "@octokit/auth-action";
-import { EnhancedOctokit, ComparisonResult, DeployInfo } from "./types";
+import { EnhancedOctokit, ComparisonResult, DeployInfo, GitHubConfig } from "../types";
+import { getConfig } from "../check-deployments";
 
 export class GitHubService {
   private readonly octokit: EnhancedOctokit;
-  private readonly owner: string;
-  private readonly repo: string;
+  private readonly config: GitHubConfig;
 
-  /**
-   * Constructs a new GitHubService
-   * @param repository Repository in format "owner/repo"
-   */
-  constructor(repository: string) {
+  constructor() {
+    this.config = getConfig();
     this.octokit = this.configureOctokit();
-    [this.owner, this.repo] = repository.split("/");
   }
 
   /**
@@ -35,8 +31,8 @@ export class GitHubService {
     try {
       const deployments = (
         await this.octokit.rest.repos.listDeployments({
-          owner: this.owner,
-          repo: this.repo,
+          owner: this.config.owner,
+          repo: this.config.repo,
           environment: env,
           per_page: limit,
         })
@@ -46,8 +42,8 @@ export class GitHubService {
 
       for (const deployment of deployments) {
         const { data: statuses } = await this.octokit.rest.repos.listDeploymentStatuses({
-          owner: this.owner,
-          repo: this.repo,
+          owner: this.config.owner,
+          repo: this.config.repo,
           deployment_id: deployment.id,
           per_page: 5, // Most deployments don't have tons of statuses
         });
@@ -62,7 +58,7 @@ export class GitHubService {
             sha: deployment.sha,
             target_url: wasSuccessful.target_url,
             environment: deployment.environment,
-            deployment_id: wasSuccessful.id,
+            deployment_id: deployment.id,
           };
         }
       }
@@ -74,15 +70,11 @@ export class GitHubService {
     }
   }
 
-  /**
-   * Get the SHA of the main branch
-   * @returns SHA of the main branch or undefined if not found
-   */
   public async getMainBranchSha(): Promise<string | undefined> {
     try {
       const { data: mainBranch } = await this.octokit.rest.repos.getBranch({
-        owner: this.owner,
-        repo: this.repo,
+        owner: this.config.owner,
+        repo: this.config.repo,
         branch: "main",
       });
 
@@ -102,21 +94,14 @@ export class GitHubService {
    * @param toSha Target SHA
    * @returns ComparisonResult with commit changes and URL
    */
-  public async compareDeployments(
-    fromEnv: string,
-    toEnv: string,
-    fromSha: string,
-    toSha: string
-  ): Promise<ComparisonResult> {
+  public async compareDeployments(fromSha: string, toSha: string): Promise<ComparisonResult> {
     try {
       const { data } = await this.octokit.rest.repos.compareCommits({
-        owner: this.owner,
-        repo: this.repo,
+        owner: this.config.owner,
+        repo: this.config.repo,
         base: fromSha,
         head: toSha,
       });
-
-      core.info(`📊 ${toEnv} is ${data.ahead_by} commits ahead and ${data.behind_by} commits behind ${fromEnv}`);
 
       return {
         compareUrl: data.html_url,
@@ -129,7 +114,7 @@ export class GitHubService {
     } catch (err) {
       core.warning(`Error comparing deployments: ${err}`);
       return {
-        compareUrl: `https://github.com/${this.owner}/${this.repo}/compare/${fromSha}...${toSha}`,
+        compareUrl: ``,
         changes: {
           ahead: 0,
           behind: 0,
@@ -139,22 +124,6 @@ export class GitHubService {
     }
   }
 
-  /**
-   * Get repository details
-   * @returns Repository details in the format "owner/repo"
-   */
-  public getRepoDetails(): { owner: string; repo: string } {
-    return {
-      owner: this.owner,
-      repo: this.repo,
-    };
-  }
-
-  /**
-   * Configure Octokit instance with required plugins and authentication
-   * @returns Configured Octokit instance
-   * @private
-   */
   private configureOctokit(): EnhancedOctokit {
     const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
     const octokit = new MyOctokit({

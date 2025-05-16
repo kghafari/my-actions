@@ -1,63 +1,46 @@
-/**
- * Main module for checking deployments across environments
- */
-
 import * as core from "@actions/core";
-import { GitHubService } from "./github-service";
-import { EnvironmentService } from "./environment-service";
-import { ReportService } from "./report-service";
+import { EnvironmentService } from "./services/environment-service";
+import { ReportService } from "./services/report-service";
+import { GitHubConfig } from "./types";
 
-/**
- * Main class for coordinating deployment checks
- */
-export class DeploymentChecker {
-  private readonly githubService: GitHubService;
-  private readonly environmentService: EnvironmentService;
-  private readonly reportService: ReportService;
+class DeploymentChecker {
+  constructor(
+    private readonly config: GitHubConfig,
+    private readonly environmentService: EnvironmentService,
+    private readonly reportService: ReportService
+  ) {}
 
-  /**
-   * Constructs a new DeploymentChecker instance
-   * @param githubRepo GitHub repository in format "owner/repo"
-   */
-  constructor(githubRepo: string) {
-    this.githubService = new GitHubService(githubRepo);
-    this.environmentService = new EnvironmentService(this.githubService);
+  public async checkDeployments(): Promise<void> {
+    const envArray = this.config.environments;
 
-    const { owner, repo } = this.githubService.getRepoDetails();
-    this.reportService = new ReportService(owner, repo);
-  }
-
-  /**
-   * Run the deployment check process
-   * @param environments Comma-separated string of environments to check
-   */
-  public async checkDeployments(environments: string): Promise<void> {
-    const envArray = environments.split(",");
-
-    // Generate the environment hierarchy based on the input environments
-    const envHierarchy = this.environmentService.generateEnvHierarchy(envArray);
-
-    // Get deployment SHAs and summaries
-    const { deploymentShas, summaries } = await this.environmentService.getDeploymentShas(envArray);
-
-    // Compare environments according to the hierarchy
-    const updatedSummaries = await this.environmentService.compareAllEnvironments(
-      summaries,
-      deploymentShas,
-      envHierarchy
-    );
+    const summary = await this.environmentService.getDeploymentSummary(envArray);
 
     // Generate the final summary
-    await this.reportService.generateFinalSummary(updatedSummaries, envHierarchy);
+    await this.reportService.generateReport(summary);
   }
 }
 
-/**
- * Function to check deployments across environments
- * @param environments Comma-separated string of environments to check
- */
-export async function checkDeployments(environments: string): Promise<void> {
+export async function checker(): Promise<void> {
+  const config = getConfig();
+
+  const environmentService = new EnvironmentService();
+  const reportService = new ReportService(config);
+  const deploymentChecker = new DeploymentChecker(config, environmentService, reportService);
+
+  await deploymentChecker.checkDeployments();
+}
+
+export function getConfig(): GitHubConfig {
   const githubRepo = core.getInput("GITHUB_REPO");
-  const deploymentChecker = new DeploymentChecker(githubRepo);
-  await deploymentChecker.checkDeployments(environments);
+  const [owner, repo] = githubRepo.split("/");
+  const environments = core
+    .getInput("environments_to_check")
+    .split(",")
+    .map((env) => env.trim());
+
+  return {
+    owner,
+    repo,
+    environments,
+  };
 }

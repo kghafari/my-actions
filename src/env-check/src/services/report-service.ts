@@ -1,42 +1,22 @@
-/**
- * Service for generating reports and summaries
- */
-
 import * as core from "@actions/core";
-import { DeploymentSummary, EnvironmentHierarchy } from "./types";
+import { Deployment, DeploymentSummary, EnvironmentHierarchy, GitHubConfig } from "../types";
 
-/**
- * Service class for report generation
- */
 export class ReportService {
-  private readonly owner: string;
-  private readonly repo: string;
-
-  /**
-   * Constructs a new ReportService
-   * @param owner Repository owner
-   * @param repo Repository name
-   */
-  constructor(owner: string, repo: string) {
-    this.owner = owner;
-    this.repo = repo;
+  constructor(private readonly config: GitHubConfig) {
+    this.config = config;
   }
 
-  /**
-   * Generate and write the final markdown summary
-   * @param summaries Array of deployment summaries
-   * @param envHierarchy Environment hierarchy mapping
-   */
-  public async generateFinalSummary(summaries: DeploymentSummary[], envHierarchy: EnvironmentHierarchy): Promise<void> {
+  public async generateReport(summary: DeploymentSummary): Promise<void> {
     core.info("📝 Generating final summary...");
 
-    const summaryList = [...summaries].reverse();
+    // Create report in reverse order, i.e prod, beta, test
+    const summaryList = summary.deploymentSummaries.reverse();
 
     // Add a table for the environment summaries
-    let markdownSummary = this.addSummaryTable(core.summary, summaryList, envHierarchy);
+    let markdownSummary = this.addSummaryTable(core.summary, summaryList, summary.environmentHierarchy);
 
-    // Add detailed sections for each environment in reverse order
-    markdownSummary = this.addDetailedSections(markdownSummary, summaryList, envHierarchy);
+    // Add detailed sections for each environment
+    markdownSummary = this.addEnvironmentSummaries(markdownSummary, summaryList, summary.environmentHierarchy);
 
     // Write the summary
     await markdownSummary.write();
@@ -52,7 +32,7 @@ export class ReportService {
    */
   private addSummaryTable(
     markdownSummary: typeof core.summary,
-    summaryList: DeploymentSummary[],
+    summaryList: Deployment[],
     envHierarchy: EnvironmentHierarchy
   ): typeof core.summary {
     return markdownSummary.addHeading("Environments", 2).addTable([
@@ -65,12 +45,13 @@ export class ReportService {
         const envName = summary.environment;
         const upstreamEnv = envHierarchy[envName];
 
-        let status = "✅ Deployed";
+        let status = "✅ Deployed from ";
+        status += `<a href=${summary.target_url}>(job id here)</a>`;
+
         let details = `SHA: `;
-        details += `<a href=https://github.com/${this.owner}/${this.repo}/commit/${summary.sha}>${summary.sha.substring(
-          0,
-          7
-        )}</a>`;
+        details += `<a href=https://github.com/${this.config.owner}/${this.config.repo}/commit/${
+          summary.sha
+        }>${summary.sha.substring(0, 7)}</a>`;
 
         if (summary.changes) {
           if (summary.changes.ahead > 0) {
@@ -95,9 +76,9 @@ export class ReportService {
    * @returns Updated markdown summary
    * @private
    */
-  private addDetailedSections(
+  private addEnvironmentSummaries(
     markdownSummary: typeof core.summary,
-    summaryList: DeploymentSummary[],
+    summaryList: Deployment[],
     envHierarchy: EnvironmentHierarchy
   ): typeof core.summary {
     for (const summary of summaryList) {
@@ -111,10 +92,11 @@ export class ReportService {
         .addRaw(`Last Deployed to ${envName}: `)
         .addLink(
           `${summary.sha.substring(0, 7)}`,
-          `https://github.com/${this.owner}/${this.repo}/commit/${summary.sha}`
+          `https://github.com/${this.config.owner}/${this.config.repo}/commit/${summary.sha}`
         )
         .addRaw(` from `)
-        .addLink(`${summary.deployment_id}`, summary.target_url || "")
+        // TODO: get correct workflow run URL
+        .addLink(`job`, summary.target_url || "")
         .addRaw(`\n`);
 
       if (summary.compareUrl && upstreamEnv) {
@@ -126,8 +108,6 @@ export class ReportService {
         markdownSummary = markdownSummary.addRaw(`#### Commits in ${upstreamEnv}\n\n`);
         markdownSummary = this.addCommitList(markdownSummary, summary);
       }
-
-      // Add comparison info if available
     }
 
     return markdownSummary;
@@ -140,7 +120,7 @@ export class ReportService {
    * @returns Updated markdown summary
    * @private
    */
-  private addCommitList(markdownSummary: typeof core.summary, summary: DeploymentSummary): typeof core.summary {
+  private addCommitList(markdownSummary: typeof core.summary, summary: Deployment): typeof core.summary {
     for (const commit of summary.changes!.commits) {
       const author = commit.author?.login || commit.commit?.author?.name || "Unknown author";
       const shortSha = commit.sha.substring(0, 7);
@@ -168,11 +148,11 @@ export class ReportService {
       if (prNumber) {
         markdownSummary = markdownSummary
           .addRaw(`- ${messageToDisplay} by @${author} in `)
-          .addLink(`#${prNumber}`, `https://github.com/${this.owner}/${this.repo}/pull/${prNumber}`);
+          .addLink(`#${prNumber}`, `https://github.com/${this.config.owner}/${this.config.repo}/pull/${prNumber}`);
       } else {
         markdownSummary = markdownSummary
           .addRaw(`- ${commitMessage} by @${author} in `)
-          .addLink(shortSha, `https://github.com/${this.owner}/${this.repo}/commit/${commit.sha}`);
+          .addLink(shortSha, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
       }
     }
 

@@ -1,10 +1,9 @@
 import * as core from "@actions/core";
-import { checkDeployments } from "./src/check-deployments";
+import { checker } from "./src/check-deployments";
 
 async function run() {
   try {
-    const environments = core.getInput("environments_to_check");
-    await checkDeployments(environments);
+    await checker();
   } catch (error) {
     core.setFailed((error as Error).message);
   }
