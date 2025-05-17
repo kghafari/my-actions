@@ -152,6 +152,7 @@ export class GitHubService {
             core.info(`Retrying after ${retryAfter} seconds!`);
             return true;
           }
+          return false;
         },
         onSecondaryRateLimit: (_retryAfter, options) => {
           core.warning(`Abuse detected for request ${options.method} ${options.url}`);

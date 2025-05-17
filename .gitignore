@@ -11,8 +11,16 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 
-# Build artifacts (excluding dist)
-!dist/
+# Exclude source maps but keep compiled JS files
+*.js.map
+*.ts.map
+
+# Keep compiled JavaScript files that GitHub Actions needs
+!src/**/index.js
+!src/**/index.js.LICENSE.txt
+
+# TypeScript declaration files
+dist/
 
 # IDE files
 .vscode/

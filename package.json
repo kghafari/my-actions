@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack"
+    "build": "cross-env NODE_ENV=production webpack",
+    "build:dev": "cross-env NODE_ENV=development webpack",
+    "watch": "cross-env NODE_ENV=development webpack --watch",
+    "debug": "cross-env NODE_ENV=development webpack && echo \"Ready for debugging\"",
+    "clean": "rimraf src/**/index.js src/**/index.js.map"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +17,11 @@
   "devDependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
+    "cross-env": "^7.0.3",
+    "rimraf": "^6.0.1",
+    "source-map-support": "^0.5.21",
     "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "webpack": "^5.99.5",
     "webpack-cli": "^6.0.1"
