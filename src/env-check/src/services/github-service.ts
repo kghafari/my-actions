@@ -75,19 +75,24 @@ export class GitHubService {
   }
 
   private async getReleaseUrl(ref: string): Promise<string> {
-    try {
-      const { data: release } = await this.octokit.rest.repos.getReleaseByTag({
-        owner: this.config.owner,
-        repo: this.config.repo,
-        tag: ref,
-      });
+    // Only check for release URL if the ref is not the main branch
+    if (ref !== "main") {
+      try {
+        const { data: release } = await this.octokit.rest.repos.getReleaseByTag({
+          owner: this.config.owner,
+          repo: this.config.repo,
+          tag: ref,
+        });
 
-      core.info(`ℹ️ Found release URL for ${ref}: ${release.html_url}`);
+        core.info(`ℹ️ Found release URL for ${ref}: ${release.html_url}`);
 
-      return release.html_url;
-    } catch (err) {
-      return "";
+        return release.html_url;
+      } catch (err) {
+        core.warning(`Unable to get release URL for ${ref}: ${err}`);
+        return "";
+      }
     }
+    return "";
   }
   public async getMainBranchSha(): Promise<string | undefined> {
     try {

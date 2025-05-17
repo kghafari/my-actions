@@ -96,10 +96,12 @@ export class ReportService {
         )
         .addRaw(` from `)
         // TODO: get correct workflow run URL
-        .addLink(`job`, summary.target_url || "")
-        .addRaw(` via `)
-        .addLink(`${summary.ref}`, summary.release_url || "")
-        .addRaw(`\n`);
+        .addLink(`${summary.target_url?.split(`/runs/`)[1]}`, summary.target_url || "");
+      if (summary.release_url?.includes("/releases/tag/")) {
+        markdownSummary = markdownSummary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release_url || "");
+      }
+
+      markdownSummary.addRaw(`\n`);
 
       if (summary.compareUrl && upstreamEnv) {
         markdownSummary = markdownSummary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl).addRaw("\n\n");
@@ -156,8 +158,8 @@ export class ReportService {
           .addRaw(`- ${commitMessage} by @${author} in `)
           .addLink(shortSha, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
       }
+      // markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${commit.target_url}`);
     }
-    markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${summary.target_url}`);
 
     return markdownSummary.addRaw(`\n\n`);
   }

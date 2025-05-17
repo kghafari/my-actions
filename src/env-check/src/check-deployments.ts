@@ -2,6 +2,10 @@ import * as core from "@actions/core";
 import { EnvironmentService } from "./services/environment-service";
 import { ReportService } from "./services/report-service";
 import { GitHubConfig } from "./types";
+import * as dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config({ path: process.env.NODE_ENV === "development" ? "./.env" : undefined });
 
 class DeploymentChecker {
   constructor(
@@ -11,9 +15,7 @@ class DeploymentChecker {
   ) {}
 
   public async checkDeployments(): Promise<void> {
-    const envArray = this.config.environments;
-
-    const summary = await this.environmentService.getDeploymentSummary(envArray);
+    const summary = await this.environmentService.getDeploymentSummary(this.config.environments);
 
     // Generate the final summary
     await this.reportService.generateReport(summary);
@@ -31,8 +33,19 @@ export async function checker(): Promise<void> {
 }
 
 export function getConfig(): GitHubConfig {
-  const githubRepo = core.getInput("GITHUB_REPO");
-  const [owner, repo] = githubRepo.split("/");
+  // if dev mode, get from .env
+  // else get from action inputs
+  if (process.env.NODE_ENV === "development") {
+    return {
+      owner: process.env.GITHUB_REPO_OWNER || "",
+      repo: process.env.GITHUB_REPO_NAME || "",
+      environments: process.env.ENVIRONMENTS_TO_CHECK
+        ? process.env.ENVIRONMENTS_TO_CHECK.split(",").map((env) => env.trim())
+        : [],
+    };
+  }
+
+  const [owner, repo] = core.getInput("GITHUB_REPO").split("/");
   const environments = core
     .getInput("environments_to_check")
     .split(",")
