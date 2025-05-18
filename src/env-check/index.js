@@ -12283,11 +12283,13 @@ class ReportService {
                 .addRaw(` from `)
                 .addLink(`${summary.target_url?.split(`/runs/`)[1]}`, summary.target_url || "");
             if (summary.release_url?.includes("/releases/tag/")) {
-                core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release_url || "");
+                core.summary
+                    .addRaw(` on release `)
+                    .addLink(`${summary.ref}`, summary.release_url || "")
+                    .addRaw(`\n\n`);
             }
-            core.summary.addBreak();
             if (summary.compareUrl && upstreamEnv) {
-                core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl);
+                core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl).addBreak();
             }
             // Add commit list if available
             if (summary.changes?.commits && summary.changes.commits.length > 0) {
