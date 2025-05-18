@@ -70,14 +70,12 @@ export class ReportService {
         .addRaw(` from `)
         .addLink(`${summary.target_url?.split(`/runs/`)[1]}`, summary.target_url || "");
       if (summary.release_url?.includes("/releases/tag/")) {
-        core.summary
-          .addRaw(` on release `)
-          .addLink(`${summary.ref}`, summary.release_url || "")
-          .addRaw(`\n\n`);
+        core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release_url || "");
       }
+      core.summary.addBreak().addBreak();
 
       if (summary.compareUrl && upstreamEnv) {
-        core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl).addBreak();
+        core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl);
       }
 
       // Add commit list if available
@@ -124,7 +122,6 @@ export class ReportService {
       }
       // markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${commit.target_url}`);
     }
-
     core.summary.addBreak();
   }
 }
