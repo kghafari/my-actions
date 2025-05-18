@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import { Deployment, DeploymentSummary, EnvironmentHierarchy, GitHubConfig } from "../types";
+const path = require("path");
 
 export class ReportService {
   constructor(private readonly config: GitHubConfig) {
@@ -15,7 +16,13 @@ export class ReportService {
     this.addSummaryTable(summaryList, summary.environmentHierarchy);
     this.addEnvironmentDetails(summaryList, summary.environmentHierarchy);
 
-    core.info(core.summary.stringify());
+    if (process.env.NODE_ENV === "development") {
+      const fs = await import("fs/promises");
+      const html = core.summary.stringify();
+      const filePath = path.resolve(__dirname, "./summary.html");
+      await fs.writeFile(filePath, html, "utf-8");
+    }
+
     // Write the summary
     await core.summary.write();
   }
@@ -73,16 +80,16 @@ export class ReportService {
       if (summary.release_url?.includes("/releases/tag/")) {
         core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release_url || "");
       }
-      core.summary.addBreak().addBreak();
+      core.summary.addRaw(`\n\n`);
 
       if (summary.compareUrl && upstreamEnv) {
         core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl);
       }
-      core.summary.addBreak();
+      core.summary.addRaw(`\n`);
 
       // Add commit list if available
       if (summary.changes?.commits && summary.changes.commits.length > 0) {
-        core.summary.addRaw(`#### Commits in ${upstreamEnv}`, true);
+        core.summary.addRaw(`#### Commits in ${upstreamEnv}`).addRaw(`\n`);
         this.addCommitList(summary);
       }
     }
@@ -119,9 +126,10 @@ export class ReportService {
           .addLink(`#${prNumber}`, `https://github.com/${this.config.owner}/${this.config.repo}/pull/${prNumber}`);
       } else {
         core.summary
-          .addRaw(`- ${commitMessage} by @${author} in `)
+          .addRaw(`- \`${commitMessage}\` by @${author} in `)
           .addLink(`${shortSha}`, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
       }
+      core.summary.addRaw(`\n`);
       // markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${commit.target_url}`);
     }
     core.summary.addBreak();
