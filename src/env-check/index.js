@@ -12242,6 +12242,7 @@ class ReportService {
         const summaryList = summary.deploymentSummaries.reverse();
         this.addSummaryTable(summaryList, summary.environmentHierarchy);
         this.addEnvironmentDetails(summaryList, summary.environmentHierarchy);
+        core.info(core.summary.stringify());
         // Write the summary
         await core.summary.write();
     }
@@ -12289,6 +12290,7 @@ class ReportService {
             if (summary.compareUrl && upstreamEnv) {
                 core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl);
             }
+            core.summary.addBreak();
             // Add commit list if available
             if (summary.changes?.commits && summary.changes.commits.length > 0) {
                 core.summary.addRaw(`#### Commits in ${upstreamEnv}`, true);
@@ -12326,7 +12328,7 @@ class ReportService {
             else {
                 core.summary
                     .addRaw(`- ${commitMessage} by @${author} in `)
-                    .addLink(shortSha, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
+                    .addLink(`${shortSha}`, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
             }
             // markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${commit.target_url}`);
         }
