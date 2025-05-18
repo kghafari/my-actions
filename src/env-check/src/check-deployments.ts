@@ -5,7 +5,10 @@ import { GitHubConfig } from "./types";
 import * as dotenv from "dotenv";
 
 // Load environment variables from .env file
-dotenv.config({ path: process.env.NODE_ENV === "development" ? "./.env" : undefined });
+if (process.env.NODE_ENV === "development") {
+  dotenv.config({ path: "./.env" });
+  core.warning("Running in development mode. Using .env file for configuration.");
+}
 
 class DeploymentChecker {
   constructor(
