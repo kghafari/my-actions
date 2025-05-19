@@ -2,12 +2,15 @@ import * as core from "@actions/core";
 import { EnvironmentService } from "./services/environment-service";
 import { ReportService } from "./services/report-service";
 import { GitHubConfig } from "./types";
-import * as dotenv from "dotenv";
 
-// Load environment variables from .env file
-if (process.env.NODE_ENV === "development") {
-  dotenv.config({ path: "./.env" });
-  core.warning("Running in development mode. Using .env file for configuration.");
+export async function checker(): Promise<void> {
+  const config = getConfig();
+
+  const environmentService = new EnvironmentService();
+  const reportService = new ReportService(config);
+  const deploymentChecker = new DeploymentChecker(config, environmentService, reportService);
+
+  await deploymentChecker.checkDeployments();
 }
 
 class DeploymentChecker {
@@ -18,21 +21,10 @@ class DeploymentChecker {
   ) {}
 
   public async checkDeployments(): Promise<void> {
-    const summary = await this.environmentService.getDeploymentSummary(this.config.environments);
-
-    // Generate the final summary
-    await this.reportService.generateReport(summary);
+    await this.reportService.generateReport(
+      await this.environmentService.getDeploymentSummary(this.config.environments)
+    );
   }
-}
-
-export async function checker(): Promise<void> {
-  const config = getConfig();
-
-  const environmentService = new EnvironmentService();
-  const reportService = new ReportService(config);
-  const deploymentChecker = new DeploymentChecker(config, environmentService, reportService);
-
-  await deploymentChecker.checkDeployments();
 }
 
 export function getConfig(): GitHubConfig {

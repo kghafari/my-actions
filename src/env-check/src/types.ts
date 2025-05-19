@@ -1,7 +1,12 @@
 import { Octokit } from "@octokit/core";
 import { Api } from "@octokit/plugin-rest-endpoint-methods";
+import { Endpoints } from "@octokit/types";
 
 export type EnhancedOctokit = Octokit & Api;
+export type getReleaseByTagResponse = Endpoints["GET /repos/{owner}/{repo}/releases/tags/{tag}"]["response"];
+export type compareCommitsResponse = Endpoints["GET /repos/{owner}/{repo}/compare/{basehead}"]["response"];
+export type deploymentStatusResponse =
+  Endpoints["GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"]["response"];
 
 export interface DeploymentSummary {
   environmentHierarchy: EnvironmentHierarchy;
@@ -14,22 +19,9 @@ export interface Deployment {
   compareUrl?: string;
   target_url?: string;
   deployment_id?: number;
-  release_url?: string;
   ref: string;
-  changes?: {
-    ahead: number;
-    behind: number;
-    commits: any[];
-  };
-}
-
-export interface ComparisonResult {
-  compareUrl: string;
-  changes: {
-    ahead: number;
-    behind: number;
-    commits: any[];
-  };
+  release?: getReleaseByTagResponse;
+  changes?: compareCommitsResponse["data"];
 }
 
 export interface DeployInfo {
@@ -38,7 +30,7 @@ export interface DeployInfo {
   environment: string;
   deployment_id: number;
   workflow_url?: string;
-  release_url?: string;
+  release: getReleaseByTagResponse | undefined;
   ref: string;
 }
 

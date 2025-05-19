@@ -7,8 +7,11 @@ import * as core from "@actions/core";
 import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
 import { throttling } from "@octokit/plugin-throttling";
 import { createActionAuth } from "@octokit/auth-action";
-import { EnhancedOctokit, ComparisonResult, DeployInfo, GitHubConfig } from "../types";
+import { EnhancedOctokit, GitHubConfig, compareCommitsResponse, Deployment } from "../types";
 import { getConfig } from "../check-deployments";
+import { Endpoints } from "@octokit/types";
+
+export type getReleaseByTagResponse = Endpoints["GET /repos/{owner}/{repo}/releases/tags/{tag}"]["response"];
 
 export class GitHubService {
   private readonly octokit: EnhancedOctokit;
@@ -25,7 +28,7 @@ export class GitHubService {
    * @param limit Maximum number of deployments to check (default: 15)
    * @returns SHA string or undefined if no successful deployment was found
    */
-  public async getLastSuccessfulDeployment(env: string, limit = 15): Promise<DeployInfo | undefined> {
+  public async getLastSuccessfulDeployment(env: string, limit = 15): Promise<Deployment | undefined> {
     core.info(`🔍 Finding last successful deployment for ${env}...`);
 
     try {
@@ -35,8 +38,9 @@ export class GitHubService {
           repo: this.config.repo,
           environment: env,
           per_page: limit,
+          sha: undefined,
         })
-      ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      ).data.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
       core.info(`  > Found ${deployments.length} deployments for ${env} environment`);
 
@@ -61,38 +65,37 @@ export class GitHubService {
               : wasSuccessful.target_url.split("/job/")[0],
             environment: deployment.environment,
             deployment_id: deployment.id,
-            release_url: await this.getReleaseUrl(deployment.ref),
+            release: (await this.getRelease(deployment.ref)) ?? undefined,
             ref: deployment.ref,
           };
         }
       }
-      return undefined;
+      throw new Error(`No successful deployment found for environment: ${env}`);
     } catch (err) {
-      core.warning(`No successful ${env} deployments found 😵💫`);
-      core.setFailed(String(err));
-      return undefined;
+      core.setFailed(`No successful ${env} deployments found 😵💫: ${String(err)}`);
+      throw err;
     }
   }
 
-  private async getReleaseUrl(ref: string): Promise<string> {
+  private async getRelease(ref: string): Promise<getReleaseByTagResponse | undefined> {
     // Only check for release URL if the ref is not the main branch
     if (ref !== "main") {
       try {
-        const { data: release } = await this.octokit.rest.repos.getReleaseByTag({
+        const release = await this.octokit.rest.repos.getReleaseByTag({
           owner: this.config.owner,
           repo: this.config.repo,
           tag: ref,
         });
 
-        core.info(`ℹ️ Found release URL for ${ref}: ${release.html_url}`);
+        core.info(`ℹ️ Found release URL for ${ref} ${release.data.target_commitish}: ${release.data.html_url}`);
 
-        return release.html_url;
+        return release;
       } catch (err) {
         core.warning(`Unable to get release URL for ${ref}: ${err}`);
-        return "";
+        return undefined;
       }
     }
-    return "";
+    return undefined;
   }
   public async getMainBranchSha(): Promise<string | undefined> {
     try {
@@ -115,34 +118,25 @@ export class GitHubService {
    * @param toSha Target SHA
    * @returns ComparisonResult with commit changes and URL
    */
-  public async compareDeployments(fromSha: string, toSha: string): Promise<ComparisonResult> {
+  public async compareDeployments(
+    fromSha: string,
+    toSha: string,
+    fromEnv: string,
+    toEnv: string
+  ): Promise<compareCommitsResponse["data"]> {
     try {
-      console.info(`🔍 Comparing deployments ${fromSha}...${toSha}`);
-      const { data } = await this.octokit.rest.repos.compareCommits({
+      console.info(`🔍 Comparing deployments ${fromEnv}...${toEnv} ${fromSha}...${toSha}`);
+      const comparison: compareCommitsResponse = await this.octokit.rest.repos.compareCommits({
         owner: this.config.owner,
         repo: this.config.repo,
         base: fromSha,
         head: toSha,
       });
 
-      return {
-        compareUrl: data.html_url,
-        changes: {
-          ahead: data.ahead_by,
-          behind: data.behind_by,
-          commits: data.commits,
-        },
-      };
+      return comparison.data;
     } catch (err) {
       core.warning(`Error comparing deployments: ${err}`);
-      return {
-        compareUrl: ``,
-        changes: {
-          ahead: 0,
-          behind: 0,
-          commits: [],
-        },
-      };
+      throw err;
     }
   }
 

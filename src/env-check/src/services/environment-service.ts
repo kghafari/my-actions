@@ -1,5 +1,11 @@
 import * as core from "@actions/core";
-import { Deployment, EnvironmentHierarchy, EnvironmentShaMap as DeploymentShaMap, DeploymentSummary } from "../types";
+import {
+  Deployment,
+  EnvironmentHierarchy,
+  EnvironmentShaMap as DeploymentShaMap,
+  DeploymentSummary,
+  compareCommitsResponse,
+} from "../types";
 import { GitHubService } from "./github-service";
 
 export class EnvironmentService {
@@ -37,6 +43,39 @@ export class EnvironmentService {
     return hierarchy;
   }
 
+  private async getDeployDetails(environments: string[]): Promise<Deployment[]> {
+    let deployments: Deployment[] = [];
+
+    for (const env of environments) {
+      console.info(`Checking deployment for environment: ${env}`);
+
+      const deployment = await this.githubService.getLastSuccessfulDeployment(env);
+      if (deployment) {
+        deployments.push({
+          environment: env,
+          sha: deployment.sha,
+          target_url: deployment.target_url,
+          deployment_id: deployment.deployment_id,
+          release: deployment.release,
+          ref: deployment.ref,
+          changes: deployment.changes,
+        });
+
+        core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);
+      } else {
+        core.warning(`No successful deployment found for ${env}`);
+      }
+    }
+
+    await this.compareAllEnvironments(
+      deployments,
+      await this.getEnvironmentShaMap(environments),
+      this.generateEnvHierarchy(environments)
+    );
+
+    return deployments;
+  }
+
   private async getEnvironmentShaMap(environments: string[]): Promise<DeploymentShaMap> {
     const deploymentShaMap: DeploymentShaMap = {};
 
@@ -64,46 +103,14 @@ export class EnvironmentService {
     return deploymentShaMap;
   }
 
-  private async getDeployDetails(environments: string[]): Promise<Deployment[]> {
-    let summaries: Deployment[] = [];
-
-    for (const env of environments) {
-      console.info(`Checking deployment for environment: ${env}`);
-
-      const deployment = await this.githubService.getLastSuccessfulDeployment(env);
-      if (deployment) {
-        summaries.push({
-          environment: env,
-          sha: deployment.sha,
-          target_url: deployment.target_url,
-          deployment_id: deployment.deployment_id,
-          release_url: deployment.release_url,
-          ref: deployment.ref,
-        });
-
-        core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);
-      } else {
-        core.warning(`No successful deployment found for ${env}`);
-      }
-    }
-
-    await this.compareAllEnvironments(
-      summaries,
-      await this.getEnvironmentShaMap(environments),
-      this.generateEnvHierarchy(environments)
-    );
-
-    return summaries;
-  }
-
   /**
    * Compare all environments according to the provided hierarchy
-   * @param summaries Deployment summaries to update with comparison results
+   * @param deployments Deployment summaries to update with comparison results
    * @param deploymentShas Map of environment names to their deployment SHAs
    * @param envHierarchy Environment hierarchy map
    */
   private async compareAllEnvironments(
-    summaries: Deployment[],
+    deployments: Deployment[],
     deploymentShas: DeploymentShaMap,
     envHierarchy: EnvironmentHierarchy
   ): Promise<void> {
@@ -113,13 +120,17 @@ export class EnvironmentService {
       const toEnv = envHierarchy[env];
 
       if (deploymentShas[fromEnv] && deploymentShas[toEnv]) {
-        const comparison = await this.githubService.compareDeployments(deploymentShas[fromEnv], deploymentShas[toEnv]);
+        const comparison: compareCommitsResponse["data"] = await this.githubService.compareDeployments(
+          deploymentShas[fromEnv],
+          deploymentShas[toEnv],
+          fromEnv,
+          toEnv
+        );
 
         // Find and update the summary for this environment
-        const summary = summaries.find((s) => s.environment === fromEnv);
-        if (summary) {
-          summary.compareUrl = comparison.compareUrl;
-          summary.changes = comparison.changes;
+        const summary = deployments.find((s) => s.environment === fromEnv);
+        if (summary && comparison) {
+          summary.changes = comparison;
         }
       } else {
         core.warning(`Cannot compare ${fromEnv} to ${toEnv} - missing deployment SHA`);

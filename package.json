@@ -9,7 +9,7 @@
     "watch": "cross-env NODE_ENV=development webpack --watch",
     "debug": "cross-env NODE_ENV=development webpack && echo \"Ready for debugging\"",
     "clean": "rimraf src/**/index.js src/**/index.js.map",
-    "start:env-check": "cross-env NODE_ENV=development node -r source-map-support/register src/env-check/index.js"
+    "start:env-check": "npm run build:dev && cross-env NODE_ENV=development node -r source-map-support/register src/env-check/index.js"
   },
   "keywords": [],
   "author": "",

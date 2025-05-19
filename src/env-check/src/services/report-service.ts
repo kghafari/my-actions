@@ -18,9 +18,9 @@ export class ReportService {
 
     if (process.env.NODE_ENV === "development") {
       const fs = await import("fs/promises");
-      const html = core.summary.stringify();
-      const filePath = path.resolve(__dirname, "./summary.html");
-      await fs.writeFile(filePath, html, "utf-8");
+      const markdown = core.summary.stringify();
+      const filePath = path.resolve(__dirname, "./summary.md");
+      await fs.writeFile(filePath, markdown, "utf-8");
     }
 
     // Write the summary
@@ -47,12 +47,12 @@ export class ReportService {
         }>${summary.sha.substring(0, 7)}</a>`;
 
         if (summary.changes) {
-          if (summary.changes.ahead > 0) {
-            details += ` | ${upstreamEnv} is ${summary.changes.ahead} commits ahead`;
+          if (summary.changes.ahead_by > 0) {
+            details += ` | ${upstreamEnv} is ${summary.changes.ahead_by} commits ahead`;
           }
 
-          if (summary.changes.behind > 0) {
-            details += ` | ${upstreamEnv} is ${summary.changes.behind} commits behind`;
+          if (summary.changes.behind_by > 0) {
+            details += ` | ${upstreamEnv} is ${summary.changes.behind_by} commits behind`;
           }
         }
 
@@ -77,26 +77,25 @@ export class ReportService {
         )
         .addRaw(` from `)
         .addLink(`${summary.target_url?.split(`/runs/`)[1]}`, summary.target_url || "");
-      if (summary.release_url?.includes("/releases/tag/")) {
-        core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release_url || "");
+      if (summary.release?.data.html_url?.includes("/releases/tag/")) {
+        core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release?.data.html_url);
+        if (summary.release.data.target_commitish.startsWith("hotfix-")) {
+          core.summary.addRaw(`\n⚠⚠⚠ WARNING: This is a hotfix release! ⚠⚠⚠`);
+        }
       }
-      core.summary.addRaw(`\n\n`);
 
-      if (summary.compareUrl && upstreamEnv) {
-        core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl);
-      }
       core.summary.addRaw(`\n`);
 
       // Add commit list if available
       if (summary.changes?.commits && summary.changes.commits.length > 0) {
-        core.summary.addRaw(`#### Commits in ${upstreamEnv}`).addRaw(`\n`);
+        core.summary.addRaw("#### ").addLink(`Compare to ${upstreamEnv}`, summary.changes.html_url).addRaw(`\n`);
         this.addCommitList(summary);
       }
     }
   }
 
   private addCommitList(summary: Deployment): void {
-    for (const commit of summary.changes!.commits) {
+    for (const commit of summary.changes?.commits || []) {
       const author = commit.author?.login || commit.commit?.author?.name || "Unknown author";
       const shortSha = commit.sha.substring(0, 7);
       const commitMessage = commit.commit?.message?.split("\n")[0] || "";
@@ -130,7 +129,6 @@ export class ReportService {
           .addLink(`${shortSha}`, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
       }
       core.summary.addRaw(`\n`);
-      // markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${commit.target_url}`);
     }
     core.summary.addBreak();
   }

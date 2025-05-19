@@ -10031,9 +10031,13 @@ exports.getConfig = getConfig;
 const core = __importStar(__webpack_require__(6977));
 const environment_service_1 = __webpack_require__(6422);
 const report_service_1 = __webpack_require__(5053);
-const dotenv = __importStar(__webpack_require__(998));
-// Load environment variables from .env file
-if (false) {}
+async function checker() {
+    const config = getConfig();
+    const environmentService = new environment_service_1.EnvironmentService();
+    const reportService = new report_service_1.ReportService(config);
+    const deploymentChecker = new DeploymentChecker(config, environmentService, reportService);
+    await deploymentChecker.checkDeployments();
+}
 class DeploymentChecker {
     constructor(config, environmentService, reportService) {
         this.config = config;
@@ -10041,17 +10045,8 @@ class DeploymentChecker {
         this.reportService = reportService;
     }
     async checkDeployments() {
-        const summary = await this.environmentService.getDeploymentSummary(this.config.environments);
-        // Generate the final summary
-        await this.reportService.generateReport(summary);
+        await this.reportService.generateReport(await this.environmentService.getDeploymentSummary(this.config.environments));
     }
-}
-async function checker() {
-    const config = getConfig();
-    const environmentService = new environment_service_1.EnvironmentService();
-    const reportService = new report_service_1.ReportService(config);
-    const deploymentChecker = new DeploymentChecker(config, environmentService, reportService);
-    await deploymentChecker.checkDeployments();
 }
 function getConfig() {
     // if dev mode, get from .env
@@ -12262,11 +12257,11 @@ class ReportService {
                 let details = `SHA: `;
                 details += `<a href=https://github.com/${this.config.owner}/${this.config.repo}/commit/${summary.sha}>${summary.sha.substring(0, 7)}</a>`;
                 if (summary.changes) {
-                    if (summary.changes.ahead > 0) {
-                        details += ` | ${upstreamEnv} is ${summary.changes.ahead} commits ahead`;
+                    if (summary.changes.ahead_by > 0) {
+                        details += ` | ${upstreamEnv} is ${summary.changes.ahead_by} commits ahead`;
                     }
-                    if (summary.changes.behind > 0) {
-                        details += ` | ${upstreamEnv} is ${summary.changes.behind} commits behind`;
+                    if (summary.changes.behind_by > 0) {
+                        details += ` | ${upstreamEnv} is ${summary.changes.behind_by} commits behind`;
                     }
                 }
                 return [envName, status, details];
@@ -12284,23 +12279,22 @@ class ReportService {
                 .addLink(`${summary.sha.substring(0, 7)}`, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${summary.sha}`)
                 .addRaw(` from `)
                 .addLink(`${summary.target_url?.split(`/runs/`)[1]}`, summary.target_url || "");
-            if (summary.release_url?.includes("/releases/tag/")) {
-                core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release_url || "");
-            }
-            core.summary.addRaw(`\n\n`);
-            if (summary.compareUrl && upstreamEnv) {
-                core.summary.addLink(`Compare to ${upstreamEnv}`, summary.compareUrl);
+            if (summary.release?.data.html_url?.includes("/releases/tag/")) {
+                core.summary.addRaw(` on release `).addLink(`${summary.ref}`, summary.release?.data.html_url);
+                if (summary.release.data.target_commitish.startsWith("hotfix-")) {
+                    core.summary.addRaw(`\n⚠⚠⚠ WARNING: This is a hotfix release! ⚠⚠⚠`);
+                }
             }
             core.summary.addRaw(`\n`);
             // Add commit list if available
             if (summary.changes?.commits && summary.changes.commits.length > 0) {
-                core.summary.addRaw(`#### Commits in ${upstreamEnv}`).addRaw(`\n`);
+                core.summary.addRaw("#### ").addLink(`Compare to ${upstreamEnv}`, summary.changes.html_url).addRaw(`\n`);
                 this.addCommitList(summary);
             }
         }
     }
     addCommitList(summary) {
-        for (const commit of summary.changes.commits) {
+        for (const commit of summary.changes?.commits || []) {
             const author = commit.author?.login || commit.commit?.author?.name || "Unknown author";
             const shortSha = commit.sha.substring(0, 7);
             const commitMessage = commit.commit?.message?.split("\n")[0] || "";
@@ -12332,7 +12326,6 @@ class ReportService {
                     .addLink(`${shortSha}`, `https://github.com/${this.config.owner}/${this.config.repo}/commit/${commit.sha}`);
             }
             core.summary.addRaw(`\n`);
-            // markdownSummary = markdownSummary.addRaw(`from `).addLink(`${summary.deployment_id}`, `${commit.target_url}`);
         }
         core.summary.addBreak();
     }
@@ -16163,6 +16156,30 @@ class EnvironmentService {
         }
         return hierarchy;
     }
+    async getDeployDetails(environments) {
+        let deployments = [];
+        for (const env of environments) {
+            console.info(`Checking deployment for environment: ${env}`);
+            const deployment = await this.githubService.getLastSuccessfulDeployment(env);
+            if (deployment) {
+                deployments.push({
+                    environment: env,
+                    sha: deployment.sha,
+                    target_url: deployment.target_url,
+                    deployment_id: deployment.deployment_id,
+                    release: deployment.release,
+                    ref: deployment.ref,
+                    changes: deployment.changes,
+                });
+                core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);
+            }
+            else {
+                core.warning(`No successful deployment found for ${env}`);
+            }
+        }
+        await this.compareAllEnvironments(deployments, await this.getEnvironmentShaMap(environments), this.generateEnvHierarchy(environments));
+        return deployments;
+    }
     async getEnvironmentShaMap(environments) {
         const deploymentShaMap = {};
         // Get the last successful deployment SHA for each environment
@@ -16186,47 +16203,23 @@ class EnvironmentService {
         }
         return deploymentShaMap;
     }
-    async getDeployDetails(environments) {
-        let summaries = [];
-        for (const env of environments) {
-            console.info(`Checking deployment for environment: ${env}`);
-            const deployment = await this.githubService.getLastSuccessfulDeployment(env);
-            if (deployment) {
-                summaries.push({
-                    environment: env,
-                    sha: deployment.sha,
-                    target_url: deployment.target_url,
-                    deployment_id: deployment.deployment_id,
-                    release_url: deployment.release_url,
-                    ref: deployment.ref,
-                });
-                core.info(`ℹ️ Found deployment SHA for ${env}: ${deployment.sha}`);
-            }
-            else {
-                core.warning(`No successful deployment found for ${env}`);
-            }
-        }
-        await this.compareAllEnvironments(summaries, await this.getEnvironmentShaMap(environments), this.generateEnvHierarchy(environments));
-        return summaries;
-    }
     /**
      * Compare all environments according to the provided hierarchy
-     * @param summaries Deployment summaries to update with comparison results
+     * @param deployments Deployment summaries to update with comparison results
      * @param deploymentShas Map of environment names to their deployment SHAs
      * @param envHierarchy Environment hierarchy map
      */
-    async compareAllEnvironments(summaries, deploymentShas, envHierarchy) {
+    async compareAllEnvironments(deployments, deploymentShas, envHierarchy) {
         // Compare each environment with its upstream
         for (const env of Object.keys(envHierarchy)) {
             const fromEnv = env;
             const toEnv = envHierarchy[env];
             if (deploymentShas[fromEnv] && deploymentShas[toEnv]) {
-                const comparison = await this.githubService.compareDeployments(deploymentShas[fromEnv], deploymentShas[toEnv]);
+                const comparison = await this.githubService.compareDeployments(deploymentShas[fromEnv], deploymentShas[toEnv], fromEnv, toEnv);
                 // Find and update the summary for this environment
-                const summary = summaries.find((s) => s.environment === fromEnv);
-                if (summary) {
-                    summary.compareUrl = comparison.compareUrl;
-                    summary.changes = comparison.changes;
+                const summary = deployments.find((s) => s.environment === fromEnv);
+                if (summary && comparison) {
+                    summary.changes = comparison;
                 }
             }
             else {
@@ -24490,6 +24483,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__webpack_require__(6977));
 const check_deployments_1 = __webpack_require__(3853);
+const dotenv = __importStar(__webpack_require__(998));
+// Load environment variables from .env file
+if (false) {}
 async function run() {
     try {
         await (0, check_deployments_1.checker)();
@@ -33679,7 +33675,8 @@ class GitHubService {
                 repo: this.config.repo,
                 environment: env,
                 per_page: limit,
-            })).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
+                sha: undefined,
+            })).data.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
             core.info(`  > Found ${deployments.length} deployments for ${env} environment`);
             for (const deployment of deployments) {
                 const { data: statuses } = await this.octokit.rest.repos.listDeploymentStatuses({
@@ -33699,37 +33696,36 @@ class GitHubService {
                             : wasSuccessful.target_url.split("/job/")[0],
                         environment: deployment.environment,
                         deployment_id: deployment.id,
-                        release_url: await this.getReleaseUrl(deployment.ref),
+                        release: (await this.getRelease(deployment.ref)) ?? undefined,
                         ref: deployment.ref,
                     };
                 }
             }
-            return undefined;
+            throw new Error(`No successful deployment found for environment: ${env}`);
         }
         catch (err) {
-            core.warning(`No successful ${env} deployments found 😵💫`);
-            core.setFailed(String(err));
-            return undefined;
+            core.setFailed(`No successful ${env} deployments found 😵💫: ${String(err)}`);
+            throw err;
         }
     }
-    async getReleaseUrl(ref) {
+    async getRelease(ref) {
         // Only check for release URL if the ref is not the main branch
         if (ref !== "main") {
             try {
-                const { data: release } = await this.octokit.rest.repos.getReleaseByTag({
+                const release = await this.octokit.rest.repos.getReleaseByTag({
                     owner: this.config.owner,
                     repo: this.config.repo,
                     tag: ref,
                 });
-                core.info(`ℹ️ Found release URL for ${ref}: ${release.html_url}`);
-                return release.html_url;
+                core.info(`ℹ️ Found release URL for ${ref} ${release.data.target_commitish}: ${release.data.html_url}`);
+                return release;
             }
             catch (err) {
                 core.warning(`Unable to get release URL for ${ref}: ${err}`);
-                return "";
+                return undefined;
             }
         }
-        return "";
+        return undefined;
     }
     async getMainBranchSha() {
         try {
@@ -33751,34 +33747,20 @@ class GitHubService {
      * @param toSha Target SHA
      * @returns ComparisonResult with commit changes and URL
      */
-    async compareDeployments(fromSha, toSha) {
+    async compareDeployments(fromSha, toSha, fromEnv, toEnv) {
         try {
-            console.info(`🔍 Comparing deployments ${fromSha}...${toSha}`);
-            const { data } = await this.octokit.rest.repos.compareCommits({
+            console.info(`🔍 Comparing deployments ${fromEnv}...${toEnv} ${fromSha}...${toSha}`);
+            const comparison = await this.octokit.rest.repos.compareCommits({
                 owner: this.config.owner,
                 repo: this.config.repo,
                 base: fromSha,
                 head: toSha,
             });
-            return {
-                compareUrl: data.html_url,
-                changes: {
-                    ahead: data.ahead_by,
-                    behind: data.behind_by,
-                    commits: data.commits,
-                },
-            };
+            return comparison.data;
         }
         catch (err) {
             core.warning(`Error comparing deployments: ${err}`);
-            return {
-                compareUrl: ``,
-                changes: {
-                    ahead: 0,
-                    behind: 0,
-                    commits: [],
-                },
-            };
+            throw err;
         }
     }
     configureOctokit() {
